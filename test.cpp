@@ -1,0 +1,73 @@
+/***************************************************************************************/
+/*                                                                                     */
+/*  Copyright 2018 by Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann  */
+/*                                                                                     */
+/*  Licensed under the FreeBSD License (the "License").                                */
+/*  You may not use this file except in compliance with the License.                   */
+/*  You may obtain a copy of the License at                                            */
+/*                                                                                     */
+/*  https://www.freebsd.org/copyright/freebsd-license.html                             */
+/*                                                                                     */
+/***************************************************************************************/
+
+
+#include "problemInfo_knp.hpp"
+#include "problemInfo_spp.hpp"
+#include "problemInfo_psp.hpp"
+#include "problemInfo_test1.hpp"
+#include "problemInfo_knp_dd.hpp"
+#include "robustSolver.hpp"
+
+int main (int, char*[]) {
+
+	const bool heuristic_mode = false;
+	const unsigned int Kmax = 2;
+	KAdaptableInfo *pInfo;
+        
+	try {
+        // --------- Qing comment out
+		// Generate the instance data
+		KNP data;
+		KAdaptableInfo_KNP_DD knpInfo;
+        int size = 5;
+        
+		gen_KNP(data, size, 5, false); // set to 'true' to allow option of loans, origianl seed is 1, old data seed is 0.
+		knpInfo.setInstance(data);
+        pInfo = knpInfo.clone();
+
+		// Other examples from the paper
+		/*
+		SPP data;
+		KAdaptableInfo_SPP sppInfo;
+		gen_SPP(data, 20, 0);
+		sppInfo.setInstance(data);
+		pInfo = sppInfo.clone();
+		*/
+		/*
+		PSP data;
+		KAdaptableInfo_PSP pspInfo;
+		gen_PSP(data, 3, false); // set to 'true' for piecewise affine decision rules
+		pspInfo.setInstance(data);
+		pInfo = pspInfo.clone();
+		*/
+
+		// CALL THE SOLVER
+		KAdaptableSolver S(*pInfo);
+    
+        std::vector<double> sol;
+        S.solve_L_Shaped(Kmax, heuristic_mode, sol);
+        
+		// Uncomment to also solve without warm-start -- only in exact mode
+		// S.solve_KAdaptability(K, false, x);
+
+		delete pInfo;
+		pInfo = NULL;
+	}
+	catch (const int& e) {
+		std::cerr << "Program ABORTED: Error number " << e << "\n";
+	}
+
+
+	return 0;
+}
+
