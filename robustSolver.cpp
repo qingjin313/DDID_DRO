@@ -82,6 +82,7 @@ const double BNC_GAP_VALUE = 10;
 //MARK: Qing: whether to do the decision dependent or not
 const bool DECISION_DEPENDENT = 1;
 const bool SOLVE_RLP_FIRST = 0; // In inner loop, whether to solve the lp relaxation of the RMIP first
+const bool USE_SG_CUT = true; // true to use subgradient cut, false to use information cut. Only use information cut when there is only deterministic term of w in the objective function and no w in the constraints with other decision varibles
 
 //-----------------------------------------------------------------------------------
 
@@ -902,7 +903,7 @@ void KAdaptableSolver::feasibleW(CPXENVptr env, CPXLPptr lp)
                 wCstrs.emplace_back(con);
         }
     }
-//    CPXXwriteprob(env_, lp_,  "/Users/lynn/Desktop/research/DRO/BnB/model_output/feasible_w", "LP");
+    
     std::vector<int> indToDelete;
     double objval;
     double objCoef(0.0);
@@ -1826,7 +1827,6 @@ bool KAdaptableSolver::feasible_YQ(const std::vector<double>& x, const unsigned 
 
 		// solve MILP
 		status = CPXXmipopt(env, lp);
-        //assert(!CPXXwriteprob (env, lp, ("/Users/lynn/Desktop/research/DRO/BnB/model_output/"+pInfo->getSolFileName()+std::to_string(K)).c_str(), "LP"));
         
 		if (!status) {
 			status = CPXXgetstat(env, lp);
@@ -2282,7 +2282,6 @@ int KAdaptableSolver::solve_SRO_duality(std::vector<double>& x) const {
 	else {
 		MYERROR(status);
 	}
-    //CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/bbdual","LP");
 	// Free memory
 	CPXXfreeprob(env, &lp);
 	CPXXcloseCPLEX (&env);
@@ -2565,9 +2564,6 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
     std::vector<double> ubs;
     std::vector<double> phis;
     std::vector<double> lbs;
-    
-    // for test, get the problem data and set to w here
-    KAdaptableInfo_KNP_DD* dataInfo = dynamic_cast<KAdaptableInfo_KNP_DD*> (pInfo);
 
     // initialize the problem
     int status;
@@ -2594,8 +2590,8 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
     
     // add w variables, index begin from 1
     auto& X   = pInfo->getVarsX();
+    std::vector<double> CoefW = pInfo->getCoefW();
     int begin = X.getFirstOfVarType("w");
-    uint j = 1;
     for (int i = 0; i < X.getVarTypeSize("w"); i++) if (!X.isUndefVar(i + begin)) {
         std::string cname;
         int ind1, ind2, ind3, ind4, ind5;
@@ -2609,7 +2605,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
             if (ind5 > -1) cname += "," + std::to_string(ind5);
             cname += ")";
         }
-        addVariable(env, lp, 'B', 0.0, 1.0, -dataInfo->data.profit[j++], cname);
+        addVariable(env, lp, 'B', 0.0, 1.0, CoefW[i], cname);
     }
     // Set feasible region for w
     feasibleW(env, lp);
@@ -2660,11 +2656,10 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
             MYERROR(status);
         }
         
-        // CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/LShape", "LP");
-        
         std::transform(result.begin()+1, result.end(), w.begin(), [](double x) { return abs(x) > 1.E-5;});
         
         std::cout << "The value of theta^t is: " << std::setprecision(4) << objval << std::endl;
+        std::cout << "The gap is: " << std::setprecision(4) << abs((bestU - objval)*100/bestU) << "%\n";
         std::cout << "The opt sol in this turn is: ";
         for(int j = 0; j < size-1; j++)
             std::cout << w[j] << ",";
@@ -2682,26 +2677,29 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         setW(w);
         
         evalstat = solve_KAdaptability(K, h, x, q);
-        feasible_KAdaptability(x, K, Q_TEMP);
+        // feasible_KAdaptability(x, K, Q_TEMP);
 
 //        if(result[0] > x[0] - EPS_INFEASIBILITY_X)
 //            break;
         // if given w_t is feasible for the inner problem, add optimality cut
         if(evalstat == CPXMIP_OPTIMAL || evalstat == CPXMIP_OPTIMAL_TOL || evalstat == CPXMIP_TIME_LIM_FEAS){
             
-            // get subgradient cut
-            double rhs_sg;
-            char sense_sg;
-            CPXNNZ rmatbeg_sg;
-            std::vector<CPXDIM> rmatind_sg;
-            std::vector<double> rmatval_sg;
-            
-            // add sub gradient cut
-            addSGCut(w, q, rhs_sg, sense_sg, rmatbeg_sg, rmatind_sg, rmatval_sg);
-            status = CPXXaddrows(env, lp, 0, 1, size + 1, &rhs_sg, &sense_sg, &rmatbeg_sg, &rmatind_sg[0], &rmatval_sg[0], NULL, NULL);
-            if(status){
-                std::cout << "Fail at adding sub-gradient cut\n\n";
-                assert(status);
+            if(USE_SG_CUT)
+            {
+                // get subgradient cut
+                double rhs_sg;
+                char sense_sg;
+                CPXNNZ rmatbeg_sg;
+                std::vector<CPXDIM> rmatind_sg;
+                std::vector<double> rmatval_sg;
+
+                // add sub gradient cut
+                addSGCut(w, q, rhs_sg, sense_sg, rmatbeg_sg, rmatind_sg, rmatval_sg);
+                status = CPXXaddrows(env, lp, 0, 1, size + 1, &rhs_sg, &sense_sg, &rmatbeg_sg, &rmatind_sg[0], &rmatval_sg[0], NULL, NULL);
+                if(status){
+                    std::cout << "Fail at adding sub-gradient cut\n\n";
+                    assert(status);
+                }
             }
             
             // add integer cut
@@ -2743,6 +2741,25 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
             double rhs = L - coef*(sizeN - 1);
             
             CPXXaddrows(env, lp, 0, 1, size + 1, &rhs, &sense, &rmatbeg, &rmatind[0], &rmatval[0], nullptr, nullptr);
+            
+            // add deterministic part of w(cost term) to the objective function will help, add warm start of |w|_1 = Q will help
+            if(!USE_SG_CUT){
+                double rhs_inf(phi_wt);
+                std::vector<CPXDIM> rmatind_inf;
+                std::vector<double> rmatval_inf;
+                
+                rmatind_inf.emplace_back(0);
+                rmatval_inf.emplace_back(1.0);
+                for(int i = 0; i < size; i++){
+                    if(w[i] == 0){
+                        rmatval_inf.emplace_back(coef);
+                        rmatind_inf.emplace_back(i+1);
+                    }
+                }
+                
+                CPXXaddrows(env, lp, 0, 1, rmatind_inf.size(), &rhs_inf, &sense, &rmatbeg, &rmatind_inf[0], &rmatval_inf[0], nullptr, nullptr);
+            }
+            
             std::cout << "Add optimality cut\n\n";
         }
         
@@ -2814,7 +2831,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
     CPXXcloseCPLEX (&env);
     
     // write to csv file
-//    std::ofstream myfile("/Users/lynn/Desktop/research/DRO/figures/N=10_lb=30_sg.txt");
+//    std::ofstream myfile("/Users/lynn/Desktop/research/DRO/figures/N=15_lb=60_k=3_sg.txt");
 //    int vsize = lbs.size();
 //    for(int n = 0; n < vsize-1; n++)
 //        myfile << lbs[n] << ",";
@@ -2846,24 +2863,21 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::v
 
     env = CPXXopenCPLEX (&status);
     lp  = CPXXcreateprob(env, &status, "KADAPTABILITY_L_SHAPED");
-
-    // for test, get the problem data and set to w here
-    KAdaptableInfo_KNP_DD* dataInfo = dynamic_cast<KAdaptableInfo_KNP_DD*> (pInfo);
     
     // add epigraph variable, indexd as 0
     // set lower bound of the optimal value
-    setL(-30);
+    setL(-60);
     setBestU(0);
     t = 0;
     // checkRep = false;
     
-    addVariable(env, lp, 'C', -100, +CPX_INFBOUND, 1.0, "theta");
+    addVariable(env, lp, 'C', L, +CPX_INFBOUND, 1.0, "theta");
     
     // add w variables, index begin from 1
     auto& X   = pInfo->getVarsX();
+    std::vector<double> CoefW = pInfo->getCoefW();
     int begin = X.getFirstOfVarType("w");
-    int j = 1;
-    for (int i = 0; i < X.getVarTypeSize("w"); i++) if (!X.isUndefVar(i)) {
+    for (int i = 0; i < X.getVarTypeSize("w"); i++) if (!X.isUndefVar(i + begin)) {
         std::string cname;
         int ind1, ind2, ind3, ind4, ind5;
         
@@ -2876,7 +2890,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::v
             if (ind5 > -1) cname += "," + std::to_string(ind5);
             cname += ")";
         }
-        addVariable(env, lp, 'B', 0.0, 1.0, -dataInfo->data.profit[j++], cname);
+        addVariable(env, lp, 'B', 0.0, 1.0, CoefW[i], cname);
     }
     // Set feasible region for w
     feasibleW(env, lp);
@@ -3009,8 +3023,7 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
     
     if(status)
         return status;
-    
-    // CPXXwriteprob(env_sub, lp_sub,  "/Users/lynn/Desktop/research/DRO/BnB/model_output/sub", "LP");
+
     // get the objval for the relaxation
     CPXXgetobjval(env_sub, lp_sub, &rhs);
     
@@ -5010,7 +5023,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     std::vector<double> x;
     std::vector<std::vector<std::vector<double>>> q;
     int solstat = S->solve_KAdaptability(K, false, x, q);
-    // S->addwBounds(w);
+    S->addwBounds(w);
     
 
     // if given w_t is feasible for the inner problem, add optimality cut
@@ -5018,18 +5031,20 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
         
         if(x[0] < S->bestU)
             S->setBestU(x[0]);
-            //S->wBounds.emplace_back(x[0]);
+            
         
         // add subgradient cut
-        double rhs_sg;
-        char sense_sg;
-        CPXNNZ rmatbeg_sg;
-        std::vector<CPXDIM> rmatind_sg;
-        std::vector<double> rmatval_sg;
-        
-        S->addSGCut(w, q, rhs_sg, sense_sg, rmatbeg_sg, rmatind_sg, rmatval_sg);
+        if(USE_SG_CUT){
+            double rhs_sg;
+            char sense_sg;
+            CPXNNZ rmatbeg_sg;
+            std::vector<CPXDIM> rmatind_sg;
+            std::vector<double> rmatval_sg;
+            
+            S->addSGCut(w, q, rhs_sg, sense_sg, rmatbeg_sg, rmatind_sg, rmatval_sg);
 
-        CPXXcutcallbackadd(env, cbdata, wherefrom, size + 1, rhs_sg, sense_sg, &rmatind_sg[0], &rmatval_sg[0], CPX_USECUT_FORCE);
+            CPXXcutcallbackadd(env, cbdata, wherefrom, size + 1, rhs_sg, sense_sg, &rmatind_sg[0], &rmatval_sg[0], CPX_USECUT_FORCE);
+        }
         
         // add integer cut
         double coef = x[0] - L;
@@ -5052,6 +5067,25 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
         double rhs = L - coef*(sizeN - 1);
         
         CPXXcutcallbackadd(env, cbdata, wherefrom, size + 1, rhs, sense, &rmatind[0], &rmatval[0], CPX_USECUT_FORCE);
+        
+        // add deterministic part of w(cost term) to the objective function will help, add warm start of |w|_1 = Q will help
+        if(!USE_SG_CUT){
+            double rhs_inf(x[0]);
+            std::vector<CPXDIM> rmatind_inf;
+            std::vector<double> rmatval_inf;
+            
+            rmatind_inf.emplace_back(0);
+            rmatval_inf.emplace_back(1.0);
+            for(int i = 0; i < size; i++){
+                if(w[i] == 0){
+                    rmatval_inf.emplace_back(coef);
+                    rmatind_inf.emplace_back(i+1);
+                }
+            }
+            
+            CPXXcutcallbackadd(env, cbdata, wherefrom, rmatind_inf.size(), rhs_inf, sense, &rmatind_inf[0], &rmatval_inf[0], CPX_USECUT_FORCE);
+        }
+        
         std::cout << "Add optimality cut\n\n";
         
         *useraction_p = CPX_CALLBACK_SET;

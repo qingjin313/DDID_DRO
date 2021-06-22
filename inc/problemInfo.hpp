@@ -81,7 +81,9 @@ protected:
 
 	/** Bound constraints on 2nd-stage variables only */
 	std::vector<std::vector<ConstraintExpression> > B_Y;
-
+    
+    /** Deterministic part of w in the objective function, need to be as the same size of w*/
+    std::vector<double> C_W;
 	/**
 	 * Define 1st-stage and 2nd-stage variables
 	 */
@@ -361,6 +363,13 @@ public:
 		return B_Y;
 	}
 
+    /**
+     * Get coeficient of the observation variable w
+     * @return coeficient of the observation variable w
+     */
+    inline const decltype(C_W)& getCoefW() {
+        return C_W;
+    }
 };
 
 

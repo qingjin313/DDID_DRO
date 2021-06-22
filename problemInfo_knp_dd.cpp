@@ -106,6 +106,7 @@ void KAdaptableInfo_KNP_DD::makeVars() {
     
 	// x(i) : invest in project i before observing risk factors
 	X.addVarType("w", 'B', 0, 1, data.N + 1);
+    C_W.assign(data.N + 1, 0.0);
 
 	// y(i) : invest in project i after observing risk factors
 	Y.addVarType("y", 'B', 0, 1, data.N + 1);
@@ -305,6 +306,7 @@ void KAdaptableInfo_KNP_DD::makeConsY(unsigned int l) {
 		for (int i = 1; i <= data.N; ++i) if (data.profit[i] != 0.0) {
             temp.addTermProduct(getVarIndex_1("w", i), data.phi[0].size() + i - 1, 1.0);
             temp.addTermX(getVarIndex_1("w", i), -data.profit[i]);
+            C_W[i] = -data.profit[i];
             temp.addTermProduct(getVarIndex_2(k, "y", i), data.phi[0].size() + i - 1, data.theta);
             if(true){
                 temp.addTermProduct(getVarIndex_1("psi", 0), data.phi[0].size() + i - 1, -(2*i-1)*0.2);

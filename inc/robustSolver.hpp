@@ -586,12 +586,12 @@ public:
     
     inline void setL(double lb) {L = lb;}
     inline void setBestU(double ub) {bestU = ub;}
-//    inline void addwBounds(std::vector<bool> wSols){
-//        std::string newW;
-//        for(auto w : wSols)
-//            newW += (w? "1" : "0");
-//        wBounds.emplace_back(newW);
-//    }
+    inline void addwBounds(std::vector<bool> wSols){
+        std::string newW;
+        for(auto w : wSols)
+            newW += (w? "1" : "0");
+        wBounds.emplace_back(newW);
+    }
     inline bool checkW(std::vector<bool> wSols){
         std::string newW;
         for(auto w : wSols)

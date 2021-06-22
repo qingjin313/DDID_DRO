@@ -129,9 +129,6 @@ void KAdaptableInfo::makeUncSetK(unsigned int K)
         }
         assert(Uk.getNoOfFacets() == int(numFacets + (numFacets + numW - 1) * l) );
     }
-    
-    
-    // CPXXwriteprob(Uk.getENVObject(), Uk.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK", "LP");
 }
 
 //-----------------------------------------------------------------------------------

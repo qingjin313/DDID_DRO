@@ -16,6 +16,7 @@
 #include "problemInfo_psp.hpp"
 #include "problemInfo_test1.hpp"
 #include "problemInfo_knp_dd.hpp"
+#include "problemInfo_pe.hpp"
 #include "robustSolver.hpp"
 
 int main (int, char*[]) {
@@ -25,12 +26,22 @@ int main (int, char*[]) {
 	KAdaptableInfo *pInfo;
         
 	try {
+        
+//        PE data;
+//        KAdaptableInfo_PE peInfo;
+//        int size = 5;
+//
+//        gen_PE(data, size, 5); // set to 'true' to allow option of loans, origianl seed is 1, old data seed is 0.
+//        peInfo.setInstance(data);
+//        pInfo = peInfo.clone();
+
+        
         // --------- Qing comment out
 		// Generate the instance data
 		KNP data;
 		KAdaptableInfo_KNP_DD knpInfo;
-        int size = 5;
-        
+        int size = 15;
+
 		gen_KNP(data, size, 5, false); // set to 'true' to allow option of loans, origianl seed is 1, old data seed is 0.
 		knpInfo.setInstance(data);
         pInfo = knpInfo.clone();
@@ -53,7 +64,7 @@ int main (int, char*[]) {
 
 		// CALL THE SOLVER
 		KAdaptableSolver S(*pInfo);
-    
+
         std::vector<double> sol;
         S.solve_L_Shaped(Kmax, heuristic_mode, sol);
         
