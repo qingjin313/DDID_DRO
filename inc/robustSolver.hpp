@@ -555,7 +555,7 @@ public:
      *@param q scenarios genrated by branch and bound and cut algorithm for each policy
 	 * @return   solve status (non-zero value indicates unsuccessful termination)
 	 */
-	int solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<std::vector<double>>>& q);
+	int solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q);
 
 	/**
 	 * Solve the separation problem arising in solve_KAdaptability()
@@ -642,7 +642,7 @@ public:
      * @param   rmatval     coefficient of each decision variables in the cut
      * @return  solve status (non-zero value indicates unsuccessful termination)
      */
-    int addSGCut(const std::vector<bool>& w, const std::vector<std::vector<std::vector<double>>>& q, double& rhs, char& sense, CPXNNZ& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval);
+    int addSGCut(const std::vector<bool>& w, const std::vector<std::vector<double>>& q, double& rhs, char& sense, CPXNNZ& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval);
 };
 
 #endif

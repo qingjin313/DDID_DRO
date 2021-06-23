@@ -2629,7 +2629,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
     
     // start the algoritham
     std::vector<double> x;
-    std::vector<std::vector<std::vector<double>>> q;
+    std::vector<std::vector<double>> q;
     double phi_wt;
     double objval;
     double tempval;
@@ -2826,20 +2826,20 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         write(std::cout, n, K, seed, stat, final_objval, total_solution_time, final_gap);
         
         // write to csv file
-        std::string method = (isWDetObjOnly()? "inf" : "sg");
-        std::ofstream myfile("/Users/lynn/Desktop/research/DRO/figures/"+problemType+"_N="+n+"_K="+std::to_string(K)+"_"+method+".txt");
-        int vsize = lbs.size();
-        for(int n = 0; n < vsize-1; n++)
-            myfile << lbs[n] << ",";
-        myfile << lbs[vsize-1] << std::endl;
-
-        for(int n = 0; n < vsize-1; n++)
-            myfile << ubs[n] << ",";
-        myfile << lbs[vsize-1] << std::endl;
-
-        for(int n = 0; n < vsize-1; n++)
-        myfile << phis[n] << ",";
-        myfile << lbs[vsize-1] << std::endl;
+//        std::string method = (isWDetObjOnly()? "inf" : "sg");
+//        std::ofstream myfile("/Users/lynn/Desktop/research/DRO/figures/"+problemType+"_N="+n+"_K="+std::to_string(K)+"_"+method+".txt");
+//        int vsize = lbs.size();
+//        for(int n = 0; n < vsize-1; n++)
+//            myfile << lbs[n] << ",";
+//        myfile << lbs[vsize-1] << std::endl;
+//
+//        for(int n = 0; n < vsize-1; n++)
+//            myfile << ubs[n] << ",";
+//        myfile << lbs[vsize-1] << std::endl;
+//
+//        for(int n = 0; n < vsize-1; n++)
+//        myfile << phis[n] << ",";
+//        myfile << lbs[vsize-1] << std::endl;
         
     }
     
@@ -2973,7 +2973,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::v
     return solstat;
 }
 
-int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std::vector<std::vector<double>>>& q, double& rhs, char& sense, CPXNNZ& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval)
+int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std::vector<double>>& q, double& rhs, char& sense, CPXNNZ& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval)
 {
     
     // first start a new problem
@@ -2998,12 +2998,10 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
     updateX(env_sub, lp_sub);
     for(int k = 0; k <= newK-1; k++){
         updateY(env_sub, lp_sub, k);
-        for(auto sample : q[k]){
-            updateXQ(env_sub, lp_sub, sample);
-            updateYQ(env_sub, lp_sub, k, sample);
-        }
+        updateXQ(env_sub, lp_sub, q[k]);
+        updateYQ(env_sub, lp_sub, k, q[k]);
     }
-
+    
 //    updateX(env_sub, lp_sub);
 //    for(uint k = 0; k <= NK-1; k++){
 //        updateY(env_sub, lp_sub, k);
@@ -3229,7 +3227,7 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
 
 //-----------------------------------------------------------------------------------
 
-int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<std::vector<double>>>& q) {
+int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q) {
     
 	assert(pInfo);
 	if (K < 1) MYERROR(EXCEPTION_K);
@@ -3469,22 +3467,20 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
     
     for(uint k = 0; k < K; k++){
         for(auto l : final_labels[k]){
-            std::vector<std::vector<double>> newq;
             // delete the repeated samples
             for(auto s : bb_samples_all[l]){
-                if(newq.size() == 0)
-                    newq.emplace_back(s);
+                if(q.size() == 0)
+                    q.emplace_back(s);
                 else{
                     double diff(0.0);
                     // i strat from 1 to exclude the epigraph
                     for(uint i = 1; i < s.size(); i++){
-                        diff += abs(s[i] - newq.back()[i]);
+                        diff += abs(s[i] - q.back()[i]);
                     }
                     if(diff > EPS_INFEASIBILITY_Q)
-                        newq.emplace_back(s);
+                        q.emplace_back(s);
                 }
             }
-            q.emplace_back(newq);
         }
     }
     
@@ -3909,7 +3905,6 @@ static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
         CPXXgetcallbacknodeinfo(env, cbdata, wherefrom, 0, CPX_CALLBACK_INFO_NODE_USERHANDLE, &nodeData);
         if (nodeData){
             S->final_labels = static_cast<CPLEX_CB_node*>(nodeData)->labels;
-            // CPXXwriteprob(env, nodelp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/inc","LP");
         }
         
 		if (COLLECT_RESULTS) ZT_VALUES.emplace_back(objval, get_wall_time());
@@ -5015,8 +5010,6 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     
     std::cout << w[size-1] << '\n' << '\n';
     
-    // CPXXwriteprob(env, nodelp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/LS","LP");
-    
     // std::cout << nodeobjval << "\n";
     std::cout << "The node obj is: " << rawW[0] << "\n";
     std::cout << "The best integer solution is: " << bestinteger << "\n";
@@ -5027,7 +5020,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     S->setW(w);
     
     std::vector<double> x;
-    std::vector<std::vector<std::vector<double>>> q;
+    std::vector<std::vector<double>> q;
     int solstat = S->solve_KAdaptability(K, false, x, q);
     S->addwBounds(w);
     
