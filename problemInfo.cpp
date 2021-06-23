@@ -172,28 +172,38 @@ bool KAdaptableInfo::isConsistentWithDesign() const {
 		}
 	}
 	if (hasInteger && !check) return 0;
+    // get the index of w
+    int begin(X.getVarLinIndex("w", 0));
+    int end(begin + X.getDefVarTypeSize("w") - 1);
+    
+    bool wCheck = true;
 	for (const auto& con: C_X) {
 		if (con.isEmpty()) return 0;
 		if (con.existBilinearTerms()) return 0;
 		if (con.existConstQTerms()) return 0;
+        if (!con.wDetObjOnly(begin, end)) wCheck = false;
 	}
 	for (const auto& con: C_XQ) {
 		if (con.isEmpty()) return 0;
 		if (!con.existBilinearTerms() && !con.existConstQTerms()) return 0;
+        if (!con.wDetObjOnly(begin, end)) wCheck = false;
 	}
 	for (const auto& con_K: C_XY) {
 		for (const auto& con: con_K) {
 			if (con.isEmpty()) return 0;
 			if (con.existBilinearTerms()) return 0;
 			if (con.existConstQTerms()) return 0;
+            if (!con.wDetObjOnly(begin, end)) wCheck = false;
 		}
 	}
 	for (const auto& con_K: C_XYQ) {
 		for (const auto& con: con_K) {
 			if (con.isEmpty()) return 0;
 			if (!con.existBilinearTerms() && !con.existConstQTerms()) return 0;
+            if (!con.wDetObjOnly(begin, end)) wCheck = false;
 		}
 	}
+    if(wCheck != wDetObjOnly) return 0;
 	for (const auto& con: B_X) {
 		if (con.isEmpty()) return 0;
 		if (con.existBilinearTerms()) return 0;

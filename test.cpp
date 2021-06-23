@@ -29,7 +29,7 @@ int main (int, char*[]) {
         
 //        PE data;
 //        KAdaptableInfo_PE peInfo;
-//        int size = 5;
+//        int size = 8;
 //
 //        gen_PE(data, size, 5); // set to 'true' to allow option of loans, origianl seed is 1, old data seed is 0.
 //        peInfo.setInstance(data);
@@ -40,7 +40,7 @@ int main (int, char*[]) {
 		// Generate the instance data
 		KNP data;
 		KAdaptableInfo_KNP_DD knpInfo;
-        int size = 15;
+        int size = 5;
 
 		gen_KNP(data, size, 5, false); // set to 'true' to allow option of loans, origianl seed is 1, old data seed is 0.
 		knpInfo.setInstance(data);

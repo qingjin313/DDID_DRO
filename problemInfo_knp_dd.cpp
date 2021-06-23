@@ -345,6 +345,7 @@ void KAdaptableInfo_KNP_DD::setInstance(const KNP& d) {
 	numFirstStage = 2 + data.N + (data.loan);
 	numSecondStage = data.N + (data.loan);
 	numPolicies = 1;
+    wDetObjOnly = false;
 	solfilename = data.solfilename;
 
 	makeUncSet();

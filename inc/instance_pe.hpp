@@ -83,7 +83,7 @@ static inline void gen_PE(PE& data, unsigned int n, int seed = 1) {
 
         
 	// set solution file name
-	data.solfilename = "PE-n" + std::to_string(data.N) + "-s" + std::to_string(seed) + ".opt";
+	data.solfilename = "pre-n" + std::to_string(data.N) + "-s" + std::to_string(seed) + ".opt";
 }
 #undef PE_NFETURES
 #endif

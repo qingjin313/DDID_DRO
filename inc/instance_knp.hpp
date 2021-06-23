@@ -195,7 +195,7 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1, bool mixed_i
         }
     }
 	// set solution file name
-	data.solfilename = "KNP-n" + std::to_string(data.N) + "-s" + std::to_string(seed) + "-t" + std::to_string(data.loan) + ".opt";
+	data.solfilename = "cpb-n" + std::to_string(data.N) + "-s" + std::to_string(seed) + "-t" + std::to_string(data.loan) + ".opt";
 }
 #undef KNP_NFACTORS
 #endif

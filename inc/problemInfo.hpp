@@ -44,6 +44,9 @@ protected:
 
 	/** # of 2nd-stage variables */
 	unsigned int numSecondStage;
+    
+    /** w in objective funtion with deterministic part only*/
+    bool wDetObjOnly;
 
 	/** # of 2nd-stage policies */
 	unsigned int numPolicies;
@@ -282,6 +285,14 @@ public:
 		return !existsFirstStage;
 	}
 
+    /**
+     * Indicates if problem has w variable in the objective funtion with deterministic term only
+     * @return true if problem has w variable in the objective funtion with deterministic term only
+     */
+    inline bool isWDetObjOnly() const {
+        return wDetObjOnly;
+    }
+    
 	/**
 	 * Get resident uncertainty set
 	 * @return return the uncertainty set

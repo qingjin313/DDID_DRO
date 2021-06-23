@@ -205,6 +205,7 @@ void KAdaptableInfo_PE::setInstance(const PE& d) {
     numFirstStage = 2 + data.N;
     numSecondStage = data.N;
     numPolicies = 1;
+    wDetObjOnly = true;
     solfilename = data.solfilename;
     
     makeUncSet();

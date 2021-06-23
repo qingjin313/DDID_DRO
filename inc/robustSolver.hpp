@@ -268,8 +268,7 @@ public:
      * @param env   environment of the outer loop l-shaped algorithm
      * @param lp    linear problem of the out loop l-shaped algorithm
      */
-    void feasibleW(CPXENVptr env, CPXLPptr lp);
-
+    void feasibleW(CPXENVptr env, CPXLPptr lp) const;
 
 public:
 	
@@ -603,6 +602,13 @@ public:
                 return true;
         
         return false;
+    }
+    /**
+     * Indicates if problem has w variable in the objective funtion with deterministic term only
+     * @return true if problem has w variable in the objective funtion with deterministic term only
+     */
+    inline bool isWDetObjOnly() const {
+        return pInfo->isWDetObjOnly();
     }
     
     inline int getTrueWSize() {return pInfo->getTrueWSize();}

@@ -163,6 +163,22 @@ public:
         
         return N;
     }
+    inline bool wDetObjOnly(int& begin, int& end) const{
+        for(auto &i : bilinearIndices){
+            if(i.first >= begin && i.first <= end)
+                return false;
+        }
+        
+        bool onlyW = true;
+        bool noW = true;
+        for(auto &i : varIndices){
+            if(i >= begin && i<= end)
+                noW = false;
+            else
+                onlyW = false;
+        }
+        return (onlyW || noW);
+    }
 	inline void clear() {
 		sense = 'L';
 		rhs = 0;

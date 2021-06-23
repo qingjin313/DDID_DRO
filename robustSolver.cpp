@@ -823,7 +823,7 @@ void KAdaptableSolver::getRobustYQ_fixedQ(const std::vector<double>& q, CPXDIM& 
     return;
 }
 
-void KAdaptableSolver::feasibleW(CPXENVptr env, CPXLPptr lp)
+void KAdaptableSolver::feasibleW(CPXENVptr env, CPXLPptr lp) const
 {
     // step 1: create inner environment for finding feasible region of w.
     int status;
@@ -2409,7 +2409,7 @@ int KAdaptableSolver::solve_ScSRO(const std::vector<std::vector<double> >& sampl
 
 //MARK: Qing: Solve the inner robust problem using cutting plane method
 //-----------------------------------------------------------------------------------
-int KAdaptableSolver::solve_YQRobust_cuttingplane(const std::vector<double>& qini){
+int KAdaptableSolver::solve_YQRobust_cuttingplane(const std::vector<double>& qini) {
     
     if (!(pInfo->getUncSet().isUncertain())) {
         std::cerr << " Error: Attempting to dualize constraint for deterministic problem. \n";
@@ -2584,9 +2584,12 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
 
     // add epigraph variable, indexd as 0
     // set lower bound of the optimal value
-    setL(-30);
-    setBestU(0);
-    addVariable(env, lp, 'C', L, +CPX_INFBOUND, 1.0, "theta");
+    std::vector<double> xTemp;
+    solve_DET(pInfo->getNominal(), xTemp);
+    setL(xTemp[0]);
+    int size = getTrueWSize();
+    setBestU(+CPX_INFBOUND);
+    addVariable(env, lp, 'C', L*size, +CPX_INFBOUND, 1.0, "theta");
     
     // add w variables, index begin from 1
     auto& X   = pInfo->getVarsX();
@@ -2611,7 +2614,6 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
     feasibleW(env, lp);
     
     // fixed parameter for adding cut
-    int size = getTrueWSize();
     char sense = 'G';
     const CPXNNZ rmatbeg = 0;
     std::vector<CPXDIM> rmatind(size+1);
@@ -2684,7 +2686,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         // if given w_t is feasible for the inner problem, add optimality cut
         if(evalstat == CPXMIP_OPTIMAL || evalstat == CPXMIP_OPTIMAL_TOL || evalstat == CPXMIP_TIME_LIM_FEAS){
             
-            if(USE_SG_CUT)
+            if(!isWDetObjOnly())
             {
                 // get subgradient cut
                 double rhs_sg;
@@ -2743,7 +2745,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
             CPXXaddrows(env, lp, 0, 1, size + 1, &rhs, &sense, &rmatbeg, &rmatind[0], &rmatval[0], nullptr, nullptr);
             
             // add deterministic part of w(cost term) to the objective function will help, add warm start of |w|_1 = Q will help
-            if(!USE_SG_CUT){
+            if(isWDetObjOnly()){
                 double rhs_inf(phi_wt);
                 std::vector<CPXDIM> rmatind_inf;
                 std::vector<double> rmatval_inf;
@@ -2823,27 +2825,28 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         std::cout << "------------Final Results------------\n";
         write(std::cout, n, K, seed, stat, final_objval, total_solution_time, final_gap);
         
+        // write to csv file
+        std::string method = (isWDetObjOnly()? "inf" : "sg");
+        std::ofstream myfile("/Users/lynn/Desktop/research/DRO/figures/"+problemType+"_N="+n+"_K="+std::to_string(K)+"_"+method+".txt");
+        int vsize = lbs.size();
+        for(int n = 0; n < vsize-1; n++)
+            myfile << lbs[n] << ",";
+        myfile << lbs[vsize-1] << std::endl;
+
+        for(int n = 0; n < vsize-1; n++)
+            myfile << ubs[n] << ",";
+        myfile << lbs[vsize-1] << std::endl;
+
+        for(int n = 0; n < vsize-1; n++)
+        myfile << phis[n] << ",";
+        myfile << lbs[vsize-1] << std::endl;
+        
     }
     
     sol = x;
     // Free memory
     CPXXfreeprob(env, &lp);
     CPXXcloseCPLEX (&env);
-    
-    // write to csv file
-//    std::ofstream myfile("/Users/lynn/Desktop/research/DRO/figures/N=15_lb=60_k=3_sg.txt");
-//    int vsize = lbs.size();
-//    for(int n = 0; n < vsize-1; n++)
-//        myfile << lbs[n] << ",";
-//    myfile << lbs[vsize-1] << std::endl;
-//
-//    for(int n = 0; n < vsize-1; n++)
-//        myfile << ubs[n] << ",";
-//    myfile << lbs[vsize-1] << std::endl;
-//
-//    for(int n = 0; n < vsize-1; n++)
-//        myfile << phis[n] << ",";
-//    myfile << lbs[vsize-1] << std::endl;
     
     return solstat;
 }
@@ -2866,12 +2869,15 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::v
     
     // add epigraph variable, indexd as 0
     // set lower bound of the optimal value
-    setL(-60);
-    setBestU(0);
+    std::vector<double> xTemp;
+    solve_DET(pInfo->getNominal(), xTemp);
+    setL(xTemp[0]);
+    int size = getTrueWSize();
+    setBestU(+CPX_INFBOUND);
     t = 0;
     // checkRep = false;
     
-    addVariable(env, lp, 'C', L, +CPX_INFBOUND, 1.0, "theta");
+    addVariable(env, lp, 'C', L*size, +CPX_INFBOUND, 1.0, "theta");
     
     // add w variables, index begin from 1
     auto& X   = pInfo->getVarsX();
@@ -5034,7 +5040,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
             
         
         // add subgradient cut
-        if(USE_SG_CUT){
+        if(!S->isWDetObjOnly()){
             double rhs_sg;
             char sense_sg;
             CPXNNZ rmatbeg_sg;
@@ -5069,7 +5075,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
         CPXXcutcallbackadd(env, cbdata, wherefrom, size + 1, rhs, sense, &rmatind[0], &rmatval[0], CPX_USECUT_FORCE);
         
         // add deterministic part of w(cost term) to the objective function will help, add warm start of |w|_1 = Q will help
-        if(!USE_SG_CUT){
+        if(S->isWDetObjOnly()){
             double rhs_inf(x[0]);
             std::vector<CPXDIM> rmatind_inf;
             std::vector<double> rmatval_inf;
