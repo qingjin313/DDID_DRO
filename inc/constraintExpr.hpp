@@ -1032,7 +1032,7 @@ public:
                 if (stat) {std::cerr << "Failed to add constraint to CPLEX inside evaluation of K-adaptable expression. \n"; exit(-1);}
                 
 			}
-            //CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/bbunc", "LP");
+            CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/bbunc", "LP");
 			/* Solve LP */
 			stat = CPXXlpopt(env, lp);
 			if (stat) std::cerr << "Could not solve LP inside evaluation of K-adaptable expression.\n";
@@ -1040,7 +1040,7 @@ public:
 
 			/* Assert that LP was solved to optimality */
 			if (CPXXgetstat(env, lp) != CPX_STAT_OPTIMAL) {
-				std::cerr << "\n\n Could not solve LP to optimality inside the evaluation problem of K-adaptable expression.\n\n";
+				std::cerr << "\n\n Could not solve LP to optimality inside the evaluation problem of K-adaptable expression." << CPXXgetstat(env, lp) << "\n\n";
 				exit(-2);
 			}
 

@@ -24,7 +24,7 @@
 #include <array>
 
 #define KNP_NFACTORS 4
-#define OLD_DATA 1
+#define OLD_DATA 0
 
 static inline double mrounddec(double x)
 {
@@ -53,15 +53,6 @@ struct KNP {
 	/** Late-stage profit penalty */
 	double theta;
 
-	/** Option of taking loans */
-	bool loan;
-
-	/** Cost of borrowing in the first-stage */
-	double ell;
-
-	/** Cost of borrowing in the second-stage */
-	double lambda;
-
 	/** Risk factor coefficients for costs */
 	std::vector<std::array<double, 1 + KNP_NFACTORS> > phi;
 
@@ -83,7 +74,7 @@ struct KNP {
  * @param seed          seed that is unique to this instance
  * @param mixed_integer true if mixed-integer knapsack problem, otherwise pure integer
  */
-static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1, bool mixed_integer = false) {
+static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1) {
 
 	if (n < 5) {
 		fprintf(stderr, "warning: N < 5 in Knapsack Problem. Setting N = 5.\n");
@@ -99,15 +90,12 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1, bool mixed_i
 	data.N = n;
 	data.B = 0.0;
 	data.theta = 0.8;
-	data.loan = mixed_integer;
-	data.ell = 0.12;
-	data.lambda = 1.2;
-
+    
     if(! OLD_DATA)
     {
         // Cost of items
-        data.cost.assign(1 + data.N, 0.0);
-        for (n = 1; (int)n <= data.N; n++) {
+        data.cost.assign(data.N, 0.0);
+        for (n = 0; (int)n <= data.N-1; n++) {
             data.cost[n] = interval_10(gen);
             data.B += data.cost[n];
         }
@@ -117,16 +105,16 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1, bool mixed_i
 
 
         // Profit of items
-        data.profit.assign(1 + data.N, 0.0);
-        for (n = 1; (int)n <= data.N; n++) {
+        data.profit.assign(data.N, 0.0);
+        for (n = 0; (int)n <= data.N-1; n++) {
             data.profit[n] = data.cost[n] / 5.0;
         }
 
 
         // Risk factor coefficients
-        data.phi.resize(1 + data.N);
-        data.ksi.resize(1 + data.N);
-        for (n = 1; (int)n <= data.N; n++) {
+        data.phi.resize(data.N);
+        data.ksi.resize(data.N);
+        for (n = 0; (int)n <= data.N-1; n++) {
             // generate F-1 numbers between 0 and 1
             std::array<double, KNP_NFACTORS - 1> xn, yn;
             for (size_t f = 0; f < xn.size(); f++) {
@@ -171,14 +159,14 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1, bool mixed_i
         srand(seed);
         
         // Profit of items
-        data.profit.assign(1 + data.N, 0.0);
-        for (n = 1; (int)n <= data.N; n++) {
+        data.profit.assign(data.N, 0.0);
+        for (n = 0; (int)n <= data.N-1; n++) {
             data.profit[n] = mrounddec(rand()%100/(double)101)*10.0;
         }
         
         // Cost of items
-        data.cost.assign(1 + data.N, 0.0);
-        for (n = 1; (int)n <= data.N; n++) {
+        data.cost.assign(data.N, 0.0);
+        for (n = 0; (int)n <= data.N-1; n++) {
             data.cost[n] = mrounddec(rand()%100/(double)101);
             data.B += data.cost[n];
         }
@@ -186,16 +174,17 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1, bool mixed_i
         // Budget (size of knapsack)
         data.B /= 2.0;
         
-        data.phi.resize(1 + data.N);
-        data.ksi.resize(1 + data.N);
-        for (n = 1; (int)n <= data.N; n++) {
+        data.phi.resize(data.N);
+        data.ksi.resize(data.N);
+        for (n = 0; (int)n <= data.N-1; n++) {
             for (uint f = 1; f <= KNP_NFACTORS; f++){
                 data.ksi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
+                data.phi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
             }
         }
     }
 	// set solution file name
-	data.solfilename = "cpb-n" + std::to_string(data.N) + "-s" + std::to_string(seed) + "-t" + std::to_string(data.loan) + ".opt";
+	data.solfilename = "cpb-n" + std::to_string(data.N) + "-s" + std::to_string(seed) + "-t" + ".opt";
 }
 #undef KNP_NFACTORS
 #endif

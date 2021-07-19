@@ -2635,8 +2635,10 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
     double tempval;
     double start_time = get_wall_time();
     
+    int warm = 0;
     while(true)
     {
+        if(warm >= size){
         // step 1: solve relaxation
         
         std::cout << "------------Iteration " << t << "------------\n\n";
@@ -2672,7 +2674,12 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         // terminating rule
         if(objval > bestU - EPS_INFEASIBILITY_Q)
             break;
-        
+        }
+        else{
+            std::fill(w.begin(), w.end(), 0);
+            w[warm] = 1;
+            warm++;
+        }
         // step 2: add cut
         std::cout << "------------Evaluating psi(w)------------\n\n";
         t += 1;
@@ -2795,6 +2802,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         }
 
     }
+    
 
     double end_time = get_wall_time();
 
@@ -2993,13 +3001,26 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
     
     // use the update function to add constraints into the problem
     int newK = q.size();
+    std::vector<std::vector<double>> q_samples;
+    
+    if (newK > 10){
+        // Get 10 samples from the total samples
+        int bit = newK % 10;
+        int num = newK / 10;
+        for(int total = bit; total + num < newK; total += num)
+            q_samples.emplace_back(q[total]);
+        newK = q_samples.size();
+    }
+    else
+        q_samples = q;
+    
     pInfo->resize(newK);
     
     updateX(env_sub, lp_sub);
     for(int k = 0; k <= newK-1; k++){
         updateY(env_sub, lp_sub, k);
-        updateXQ(env_sub, lp_sub, q[k]);
-        updateYQ(env_sub, lp_sub, k, q[k]);
+        updateXQ(env_sub, lp_sub, q_samples[k]);
+        updateYQ(env_sub, lp_sub, k, q_samples[k]);
     }
     
 //    updateX(env_sub, lp_sub);
@@ -3319,7 +3340,8 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	CPXXsetintparam(env, CPX_PARAM_MIPCBREDLP, CPX_OFF);
 	CPXXsetintparam(env, CPX_PARAM_REDUCE, CPX_PREREDUCE_PRIMALONLY);
 	CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
-    CPXXsetintparam(env, CPX_PARAM_TILIM, 120);
+    CPXXsetdblparam(env, CPXPARAM_TimeLimit, 120.0);
+    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.01);
 
 	if (!hasObjectiveUncOnly() && !BNC_BRANCH_ALL_CONSTR){
 		CPXXsetusercutcallbackfunc(env, cutCB_solve_KAdaptability_cuttingPlane, this);
@@ -3395,7 +3417,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 
     
 	double start_time = get_wall_time();
-
+    std::cout << "Strat to evaluate. \n\n";
 	// solve problem
 	status = CPXXmipopt(env, lp);
 	if (!status) {
@@ -3465,20 +3487,22 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 //            q[k].insert(q[k].end(), bb_samples_all[l].begin(), bb_samples_all[l].end());
 //    }
     
-    for(uint k = 0; k < K; k++){
-        for(auto l : final_labels[k]){
-            // delete the repeated samples
-            for(auto s : bb_samples_all[l]){
-                if(q.size() == 0)
-                    q.emplace_back(s);
-                else{
-                    double diff(0.0);
-                    // i strat from 1 to exclude the epigraph
-                    for(uint i = 1; i < s.size(); i++){
-                        diff += abs(s[i] - q.back()[i]);
-                    }
-                    if(diff > EPS_INFEASIBILITY_Q)
+    if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
+        for(uint k = 0; k < K; k++){
+            for(auto l : final_labels[k]){
+                // delete the repeated samples
+                for(auto s : bb_samples_all[l]){
+                    if(q.size() == 0)
                         q.emplace_back(s);
+                    else{
+                        double diff(0.0);
+                        // i strat from 1 to exclude the epigraph
+                        for(uint i = 1; i < s.size(); i++){
+                            diff += abs(s[i] - q.back()[i]);
+                        }
+                        if(diff > EPS_INFEASIBILITY_Q)
+                            q.emplace_back(s);
+                    }
                 }
             }
         }
@@ -5026,7 +5050,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     
 
     // if given w_t is feasible for the inner problem, add optimality cut
-    if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || CPXMIP_TIME_LIM_FEAS){
+    if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
         
         if(x[0] < S->bestU)
             S->setBestU(x[0]);

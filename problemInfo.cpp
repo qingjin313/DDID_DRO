@@ -41,8 +41,6 @@ void KAdaptableInfo::resize(unsigned int K) {
     }
     
     makeUncSetK(K);
-//    int stat;
-//    CPXXwriteprob(getUncSetK().getENVObject(), getUncSetK().getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/oriunc","LP");
     
 	assert(isConsistentWithDesign());
 }
@@ -68,7 +66,7 @@ void KAdaptableInfo::makeUncSetK(unsigned int K)
         
     Uk.clear();
     
-    int stat;
+    // int stat;
     //CPXXwriteprob(Uk.getENVObject(), Uk.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK_before", "LP");
     
     // get all data from uncertainty set U
