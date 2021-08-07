@@ -620,7 +620,7 @@ public:
      * @param   sol     vector of solution
      * @return  solve status (non-zero value indicates unsuccessful termination)
      */
-    int solve_L_Shaped(const unsigned int K, const bool h, std::vector<double>& sol);
+    int solve_L_Shaped(const unsigned int K, const bool h, std::vector<double>& sol, CPXENVptr& envCopy, CPXLPptr& lpCopy);
     
     /**
      * Optimize over w using L-Shaped method
@@ -643,6 +643,8 @@ public:
      * @return  solve status (non-zero value indicates unsuccessful termination)
      */
     int addSGCut(const std::vector<bool>& w, const std::vector<std::vector<double>>& q, double& rhs, char& sense, CPXNNZ& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval);
+    
+    int addSGCut(const std::vector<bool>& w, const std::vector<std::vector<double>>& q, std::vector<double>& rhs, std::vector<char>& sense, std::vector<CPXNNZ>& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval, CPXDIM &rcnt, CPXNNZ &nzcnt);
 };
 
 #endif

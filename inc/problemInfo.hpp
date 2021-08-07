@@ -41,6 +41,9 @@ protected:
 
 	/** # of 1st-stage variables including worst-case objective */
 	unsigned int numFirstStage;
+    
+    /** # of constraints in the ambiguity set */
+    unsigned int numAmbCstr;
 
 	/** # of 2nd-stage variables */
 	unsigned int numSecondStage;
@@ -160,6 +163,7 @@ public:
     //MARK: Qing: add set w and set xi_bar
     void setW(const std::vector<bool>& wInput);
     
+    void setRobSol(const std::vector<bool>& wInput, const std::vector<double>& xInput, const std::vector<std::vector<double>>& yInput);
     inline void setXiBar(const std::vector<double>& xi_bar) {U.setXiBar(xi_bar);}
     inline void resetXiBar() {U.resetXiBar();}
     inline int getWSize() {return U.getWSize();}

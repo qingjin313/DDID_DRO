@@ -265,14 +265,51 @@ const std::vector<int> KAdaptableInfo::mapParamK(const unsigned int k, const std
 
 void KAdaptableInfo::setW(const std::vector<bool>& wInput)
 {
-    int start(X.getFirstDefOfVarType("w") - X.getFirstOfVarType("w"));
+    int startw(X.getFirstDefOfVarType("w") - X.getFirstOfVarType("w"));
+    assert(int(wInput.size()) == X.getDefVarTypeSize("w"));
     
     // Always assume the observation variables have the name w and the dimension of w is 1
     for(unsigned int i = 0; i < wInput.size(); i++)
     {
-        X.setVarLB(wInput[i], "w", i+start);
-        X.setVarUB(wInput[i], "w", i+start);
+        X.setVarLB(wInput[i], "w", i+startw);
+        X.setVarUB(wInput[i], "w", i+startw);
     }
     
     U.setW(wInput);
+}
+
+void KAdaptableInfo::setRobSol(const std::vector<bool>& wInput, const std::vector<double>& xInput, const std::vector<std::vector<double>>& yInput)
+{
+    int startw(X.getFirstDefOfVarType("w") - X.getFirstOfVarType("w"));
+    assert(int(wInput.size()) == X.getDefVarTypeSize("w"));
+    
+    // Always assume the observation variables have the name w and the dimension of w is 1
+    for(unsigned int i = 0; i < wInput.size(); i++)
+    {
+        X.setVarLB(wInput[i], "w", i+startw);
+        X.setVarUB(wInput[i], "w", i+startw);
+    }
+    
+    if(xInput.size()){
+        int startx(X.getFirstDefOfVarType("x") - X.getFirstOfVarType("x"));
+        assert(int(xInput.size()) == X.getDefVarTypeSize("x"));
+        for(unsigned int i = 0; i < xInput.size(); i++)
+        {
+            X.setVarLB(xInput[i], "x", i+startx);
+            X.setVarUB(xInput[i], "x", i+startx);
+        }
+    }
+    
+//    if(yInput.size()){
+//        getVarIndex_2(k, "y", <#const int ind1#>);
+//        assert(int(yInput[0].size()) == Y.getDefVarTypeSize("y"));
+//        for(unsigned int k = 0; k < yInput.size(); k++)
+//        {
+//            for(unsigned int i = 0; i < yInput[k].size(); i++)
+//            {
+//                Y.setVarLB(yInput[i], "y", i+startx);
+//                Y.setVarUB(yInput[i], "y", i+startx);
+//            }
+//        }
+//    }
 }

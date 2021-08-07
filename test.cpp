@@ -21,7 +21,7 @@
 
 int main (int, char*[]) {
 
-	const bool heuristic_mode = false;
+	const bool heuristic_mode = true;
 	const unsigned int Kmax = 2;
 	KAdaptableInfo *pInfo;
         
@@ -40,9 +40,9 @@ int main (int, char*[]) {
 		// Generate the instance data
 		KNP data;
 		KAdaptableInfo_KNP_DD knpInfo;
-        int size = 6;
+        int size = 8;
 
-		gen_KNP(data, size, 1); //origianl seed is 1, old data seed is 5.
+		gen_KNP(data, size, 2); //origianl seed is 1, old data seed is 5.
 		knpInfo.setInstance(data);
         pInfo = knpInfo.clone();
 
@@ -66,8 +66,16 @@ int main (int, char*[]) {
 		KAdaptableSolver S(*pInfo);
         
         std::vector<double> sol;
-        S.solve_L_Shaped(Kmax, heuristic_mode, sol);
+        sol.emplace_back(0.0);
+        CPXENVptr envCopy = NULL;
+        CPXLPptr lpCopy = NULL;
+        for (uint k = 1; k <= Kmax; k++){
+            S.solve_L_Shaped(k, heuristic_mode, sol, envCopy, lpCopy);
+            S.reset(*pInfo);
+        }
         
+        CPXXfreeprob(envCopy, &lpCopy);
+        CPXXcloseCPLEX (&envCopy);
 		// Uncomment to also solve without warm-start -- only in exact mode
 		// S.solve_KAdaptability(K, false, x);
 

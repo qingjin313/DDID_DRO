@@ -176,10 +176,29 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1) {
         
         data.phi.resize(data.N);
         data.ksi.resize(data.N);
+        
+        
         for (n = 0; (int)n <= data.N-1; n++) {
-            for (uint f = 1; f <= KNP_NFACTORS; f++){
-                data.ksi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
-                data.phi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
+            bool pos = false;
+            while(!pos){
+                double sum = 0.0;
+                for (uint f = 1; f <= KNP_NFACTORS; f++){
+                    data.ksi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
+                    sum += abs(data.ksi[n][f]);
+                }
+                if (sum <= 2)
+                    pos = true;
+            }
+            
+            pos = false;
+            while(!pos){
+                double sum = 0.0;
+                for (uint f = 1; f <= KNP_NFACTORS; f++){
+                    data.phi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
+                    sum += abs(data.phi[n][f]);
+                }
+                if (sum <= 2)
+                    pos = true;
             }
         }
     }
