@@ -561,15 +561,15 @@ public:
 		return pInfo->hasObjectiveUncOnly();
 	}
 
-	/**
-	 * Solve the K-adaptability problem using solver callbacks
-	 * @param  K # of 2nd-stage policies
-	 * @param  h run in heuristic mode
-	 * @param  x optimal solution (if any) will be returned here
-     *   @param   q scenarios genrated by branch and bound and cut algorithm for each policy
-     *   @param   y fixed second stage solution for evluating the suboptimality of the RO solution
-	 * @return   solve status (non-zero value indicates unsuccessful termination)
-	 */
+    /**
+     * Solve the K-adaptability problem using solver callbacks
+     * @param  K # of 2nd-stage policies
+     * @param  h run in heuristic mode
+     * @param  x optimal solution (if any) will be returned here
+     * @param  q scenarios genrated by branch and bound and cut algorithm for each policy
+     * @param  y fixed second stage solution for evluating the suboptimality of the RO solution
+     * @return   solve status (non-zero value indicates unsuccessful termination)
+     */ 
     int solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q, const std::vector<double>& y = {});
 
 	/**
@@ -633,6 +633,8 @@ public:
      * @param   K       number of K
      * @param   h       whether use heuristic mode
      * @param   stream     stream to write solution
+     * @param   envCopy     environment for warm start
+     * @param   lpCopy      integer problem for warm start
      * @return  solve status (non-zero value indicates unsuccessful termination)
      */
     int solve_L_Shaped(const unsigned int K, const bool h, std::ostream& out, CPXENVptr& envCopy, CPXLPptr& lpCopy);

@@ -2693,7 +2693,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
         
         // lbs.emplace_back(objval);
         // terminating rule
-        if(gap <= 0.1)
+        if(gap <= 0.1 || ((get_wall_time() - start_time) > 7200))
             break;
         
 //        if(h && K >= 2 && bestU < last - 0.001)
@@ -2892,7 +2892,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
         std::cout << "------------Final Results------------\n";
         write(std::cout, n, K, seed, stat, final_objval, total_solution_time, final_gap);
         // file to record DRO performance
-        out << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "\n";
+        out << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "," << t << "\n";
         // file to record RO solution, style: name-N-K
 //        int i = 0;
 //        for(; i < int(optsol.size() - 1); i++)
@@ -3553,7 +3553,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	CPXXsetintparam(env, CPX_PARAM_REDUCE, CPX_PREREDUCE_PRIMALONLY);
 	CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
     CPXXsetdblparam(env, CPXPARAM_TimeLimit, 300.0);
-    // CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.05);
+    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.05);
 
 	if (!hasObjectiveUncOnly() && !BNC_BRANCH_ALL_CONSTR){
 		CPXXsetusercutcallbackfunc(env, cutCB_solve_KAdaptability_cuttingPlane, this);
