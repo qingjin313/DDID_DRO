@@ -522,7 +522,21 @@ public:
     inline void setW(const std::vector<bool> &wInput) const {
         pInfo->setW(wInput);
     }
-
+    
+    /**
+     * Set first stage decision to the problem for evaluating the suboptimality from RO
+     */
+    inline void setRobSolx(const std::vector<bool>& wInput, const std::vector<double>& xInput) const {
+        pInfo->setRobSolx(wInput, xInput);
+    }
+    
+    /**
+     * Set second stage decision to the problem for evaluating the suboptimality from RO
+     */
+    inline void setRobSoly(const std::vector<double>& yInput) const {
+        pInfo->setRobSoly(yInput);
+    }
+    
 	/**
 	 * Is the underlying problem a pure LP?
 	 * @return true if the problem is continuous
@@ -552,10 +566,11 @@ public:
 	 * @param  K # of 2nd-stage policies
 	 * @param  h run in heuristic mode
 	 * @param  x optimal solution (if any) will be returned here
-     *@param q scenarios genrated by branch and bound and cut algorithm for each policy
+     *   @param   q scenarios genrated by branch and bound and cut algorithm for each policy
+     *   @param   y fixed second stage solution for evluating the suboptimality of the RO solution
 	 * @return   solve status (non-zero value indicates unsuccessful termination)
 	 */
-	int solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q);
+    int solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q, const std::vector<double>& y = {});
 
 	/**
 	 * Solve the separation problem arising in solve_KAdaptability()
@@ -617,10 +632,10 @@ public:
      * Optimize over w using L-Shaped method
      * @param   K       number of K
      * @param   h       whether use heuristic mode
-     * @param   sol     vector of solution
+     * @param   stream     stream to write solution
      * @return  solve status (non-zero value indicates unsuccessful termination)
      */
-    int solve_L_Shaped(const unsigned int K, const bool h, std::vector<double>& sol, CPXENVptr& envCopy, CPXLPptr& lpCopy);
+    int solve_L_Shaped(const unsigned int K, const bool h, std::ostream& out, CPXENVptr& envCopy, CPXLPptr& lpCopy);
     
     /**
      * Optimize over w using L-Shaped method

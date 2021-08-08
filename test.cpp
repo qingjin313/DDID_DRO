@@ -40,47 +40,84 @@ int main (int, char*[]) {
 		// Generate the instance data
 		KNP data;
 		KAdaptableInfo_KNP_DD knpInfo;
-        int size = 8;
-
-		gen_KNP(data, size, 2); //origianl seed is 1, old data seed is 5.
-		knpInfo.setInstance(data);
-        pInfo = knpInfo.clone();
-
-		// Other examples from the paper
-		/*
-		SPP data;
-		KAdaptableInfo_SPP sppInfo;
-		gen_SPP(data, 20, 0);
-		sppInfo.setInstance(data);
-		pInfo = sppInfo.clone();
-		*/
-		/*
-		PSP data;
-		KAdaptableInfo_PSP pspInfo;
-		gen_PSP(data, 3, false); // set to 'true' for piecewise affine decision rules
-		pspInfo.setInstance(data);
-		pInfo = pspInfo.clone();
-		*/
-
-		// CALL THE SOLVER
-		KAdaptableSolver S(*pInfo);
+        int size = 5;
         
-        std::vector<double> sol;
-        sol.emplace_back(0.0);
-        CPXENVptr envCopy = NULL;
-        CPXLPptr lpCopy = NULL;
-        for (uint k = 1; k <= Kmax; k++){
-            S.solve_L_Shaped(k, heuristic_mode, sol, envCopy, lpCopy);
-            S.reset(*pInfo);
+        // test DRO performance or get RO solution
+        for(int seed = 0; seed < 20; seed++){
+            gen_KNP(data, size, seed); //origianl seed is 1, old data seed is 5.
+            knpInfo.setInstance(data);
+            pInfo = knpInfo.clone();
+
+            // CALL THE SOLVER
+            KAdaptableSolver S(*pInfo);
+            
+    //        std::vector<bool> wInput(size, 0);
+    //        std::vector<double> xInput;
+    //        std::vector<double> yInput(size, 0);
+    //        yInput[2] = 1;
+    //
+    //        S.setRobSolx(wInput, xInput);
+    //        S.setRobSoly(yInput);
+            // std::ostream& out;
+            CPXENVptr envCopy = NULL;
+            CPXLPptr lpCopy = NULL;
+            for (uint k = 1; k <= Kmax; k++){
+                std::ofstream myfile("/Users/lynn/Desktop/research/DRO/figures/KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
+                S.solve_L_Shaped(k, heuristic_mode, myfile, envCopy, lpCopy);
+                S.reset(*pInfo);
+                myfile.close();
+            }
+            
+            CPXXfreeprob(envCopy, &lpCopy);
+            CPXXcloseCPLEX (&envCopy);
+
+            delete pInfo;
+            pInfo = NULL;
         }
         
-        CPXXfreeprob(envCopy, &lpCopy);
-        CPXXcloseCPLEX (&envCopy);
-		// Uncomment to also solve without warm-start -- only in exact mode
-		// S.solve_KAdaptability(K, false, x);
+        //test suboptimality of RO solution
+        std::ofstream myfileOut("/Users/lynn/Desktop/research/DRO/figures/KNP_sub_N=" + std::to_string(size) + ".csv");
+        for(uint k = 1; k <= Kmax; k++){
+            std::ifstream myfile("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
+            int seed = 0;
+            std::string line;
+            
+            while(getline(myfile, line)){
+                std::vector<double> roSol;
+                // TODO: read RO solution from the file, to be finished
+                
+                gen_KNP(data, size, seed); //origianl seed is 1, old data seed is 5.
+                knpInfo.setInstance(data);
+                pInfo = knpInfo.clone();
 
-		delete pInfo;
-		pInfo = NULL;
+                // CALL THE SOLVER
+                KAdaptableSolver S(*pInfo);
+                
+                //get solution of variable w, x and y
+                int sizeW(pInfo->getVarsX().getDefVarTypeSize("w"));
+                int sizeX(pInfo->getVarsX().getDefVarTypeSize("x"));
+                int sizeY(pInfo->getNumSecondStage());
+                
+                std::vector<bool> wSol;
+                std::transform(roSol.begin(), roSol.begin()+sizeW-1, wSol.begin(), [](double x) { return abs(x) > 1.E-5;});
+                std::vector<double> xSol(roSol.begin()+sizeW, roSol.begin()+sizeW+sizeX-1);
+                std::vector<double> ySol(roSol.begin()+sizeW+sizeX, roSol.end());
+                assert(uint(ySol.size()) == sizeY*k);
+                
+                //set solution to DRO, only optimize over \psi
+                S.setRobSolx(wSol, xSol);
+                
+                std::vector<double> x;
+                std::vector<std::vector<double>> q;
+                S.solve_KAdaptability(k, false, x, q, ySol);
+                
+                myfileOut << x[0] << ",";
+                seed++;
+            }
+            myfileOut << "\n";
+        }
+        
+        
 	}
 	catch (const int& e) {
 		std::cerr << "Program ABORTED: Error number " << e << "\n";

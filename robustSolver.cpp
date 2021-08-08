@@ -2558,14 +2558,15 @@ int KAdaptableSolver::solve_YQRobust_cuttingplane(const std::vector<double>& qin
     return status;
 }
 
-int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::vector<double>& sol, CPXENVptr& envCopy, CPXLPptr& lpCopy)
+int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ostream& out, CPXENVptr& envCopy, CPXLPptr& lpCopy)
 {
     // vector to store the ub and the ub
-    std::vector<double> ubs;
-    std::vector<double> phis;
-    std::vector<double> lbs;
+//    std::vector<double> ubs;
+//    std::vector<double> phis;
+//    std::vector<double> lbs;
+    std::vector<double> optsol;
     
-    sol.clear();
+//    sol.clear();
 
     // initialize the problem
     int status;
@@ -2643,7 +2644,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
     // set iteration counter t
     int t = 0;
     
-    // start the algoritham
+    // start the algorithm
     std::vector<double> x;
     std::vector<std::vector<double>> q;
     double phi_wt;
@@ -2690,7 +2691,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         
         std::cout << w[size-1] << '\n' << '\n';
         
-        lbs.emplace_back(objval);
+        // lbs.emplace_back(objval);
         // terminating rule
         if(gap <= 0.1)
             break;
@@ -2755,7 +2756,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
             // add integer cut
             phi_wt = x[0];
             tempval = objval - result[0] + phi_wt;
-            phis.emplace_back(tempval);
+            // phis.emplace_back(tempval);
             
             // print out second stage decision variable
             for(uint i = 1; i <= NK; i++){
@@ -2766,10 +2767,12 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
                 std::cout << x[secondInd[i-1] + size - 1] << "\n";
             }
             
-            if(tempval < bestU)
+            if(tempval < bestU){
                 setBestU(tempval);
+                optsol = x;
+            }
             
-            ubs.emplace_back(bestU);
+            // ubs.emplace_back(bestU);
             double coef = phi_wt - L;
             
             std::vector<double> rmatval;
@@ -2888,6 +2891,13 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         
         std::cout << "------------Final Results------------\n";
         write(std::cout, n, K, seed, stat, final_objval, total_solution_time, final_gap);
+        // file to record DRO performance
+        out << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "\n";
+        // file to record RO solution, style: name-N-K
+//        int i = 0;
+//        for(; i < int(optsol.size() - 1); i++)
+//            out << optsol[i] << ",";
+//        out << optsol[i] << "\n";
         
         // write to csv file
 //        std::string method = (isWDetObjOnly()? "inf" : "sg");
@@ -2907,8 +2917,8 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::ve
         
     }
     
-    sol = x;
-    sol[0] = bestU;
+//    sol = x;
+//    sol[0] = bestU;
     
     // warm start larger K case
     if(h){
@@ -3445,7 +3455,7 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
 
 //-----------------------------------------------------------------------------------
 
-int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q) {
+int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q, const std::vector<double>& y) {
     
 	assert(pInfo);
 	if (K < 1) MYERROR(EXCEPTION_K);
@@ -3518,7 +3528,12 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	
 	// assign sample to root node
 	updateX(env, lp);
+    assert(!y.size() || y.size() == K * pInfo->getNumSecondStage());
 	for (unsigned int k = 0; k < K; k++) {
+        if(y.size()){
+            std::vector<double> yInput(y.begin() + k * pInfo->getNumSecondStage(), y.begin() + (k+1) * pInfo->getNumSecondStage() - 1);
+            setRobSoly(yInput);
+        }
 		updateY(env, lp, k);
 	}
 	updateXQ(env, lp, qtemp);

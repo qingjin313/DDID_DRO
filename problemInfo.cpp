@@ -278,7 +278,7 @@ void KAdaptableInfo::setW(const std::vector<bool>& wInput)
     U.setW(wInput);
 }
 
-void KAdaptableInfo::setRobSol(const std::vector<bool>& wInput, const std::vector<double>& xInput, const std::vector<std::vector<double>>& yInput)
+void KAdaptableInfo::setRobSolx(const std::vector<bool>& wInput, const std::vector<double>& xInput)
 {
     int startw(X.getFirstDefOfVarType("w") - X.getFirstOfVarType("w"));
     assert(int(wInput.size()) == X.getDefVarTypeSize("w"));
@@ -299,17 +299,18 @@ void KAdaptableInfo::setRobSol(const std::vector<bool>& wInput, const std::vecto
             X.setVarUB(xInput[i], "x", i+startx);
         }
     }
+}
+
+void KAdaptableInfo::setRobSoly(const std::vector<double>& yInput)
+{
     
-//    if(yInput.size()){
-//        getVarIndex_2(k, "y", <#const int ind1#>);
-//        assert(int(yInput[0].size()) == Y.getDefVarTypeSize("y"));
-//        for(unsigned int k = 0; k < yInput.size(); k++)
-//        {
-//            for(unsigned int i = 0; i < yInput[k].size(); i++)
-//            {
-//                Y.setVarLB(yInput[i], "y", i+startx);
-//                Y.setVarUB(yInput[i], "y", i+startx);
-//            }
-//        }
-//    }
+    if(yInput.size()){
+        int starty(Y.getFirstDefOfVarType("y") - Y.getFirstOfVarType("y"));
+        assert(int(yInput.size()) == Y.getDefVarTypeSize("y"));
+        for(unsigned int i = 0; i < yInput.size(); i++)
+        {
+            Y.setVarLB(yInput[i], "y", i+starty);
+            Y.setVarUB(yInput[i], "y", i+starty);
+        }
+    }
 }
