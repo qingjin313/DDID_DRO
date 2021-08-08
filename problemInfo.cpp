@@ -289,6 +289,7 @@ void KAdaptableInfo::setRobSolx(const std::vector<bool>& wInput, const std::vect
         X.setVarLB(wInput[i], "w", i+startw);
         X.setVarUB(wInput[i], "w", i+startw);
     }
+    U.setW(wInput);
     
     if(xInput.size()){
         int startx(X.getFirstDefOfVarType("x") - X.getFirstOfVarType("x"));

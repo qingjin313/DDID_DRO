@@ -362,7 +362,9 @@ int VarInfo::getVarTypeSize(const std::string & name) const {
 // get the number of defined variables of the requested type
 int VarInfo::getDefVarTypeSize(const std::string & name) const {
 	if(VarType.find(name) == VarType.end()) {
-		abortProgram("Invalid key (getVarTypeSize)");
+        // if no variable type, return 0
+		// abortProgram("Invalid key (getVarTypeSize)");
+        return 0;
 	}
 	const int last  = std::get<1>(VarType.at(name));
 	const int first = std::get<0>(VarType.at(name));

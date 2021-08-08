@@ -3531,7 +3531,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
     assert(!y.size() || y.size() == K * pInfo->getNumSecondStage());
 	for (unsigned int k = 0; k < K; k++) {
         if(y.size()){
-            std::vector<double> yInput(y.begin() + k * pInfo->getNumSecondStage(), y.begin() + (k+1) * pInfo->getNumSecondStage() - 1);
+            std::vector<double> yInput(y.begin() + k * pInfo->getNumSecondStage(), y.begin() + (k+1) * pInfo->getNumSecondStage());
             setRobSoly(yInput);
         }
 		updateY(env, lp, k);
@@ -3553,7 +3553,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	CPXXsetintparam(env, CPX_PARAM_REDUCE, CPX_PREREDUCE_PRIMALONLY);
 	CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
     CPXXsetdblparam(env, CPXPARAM_TimeLimit, 300.0);
-    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.05);
+    // CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.05);
 
 	if (!hasObjectiveUncOnly() && !BNC_BRANCH_ALL_CONSTR){
 		CPXXsetusercutcallbackfunc(env, cutCB_solve_KAdaptability_cuttingPlane, this);
@@ -3698,8 +3698,8 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 //        for(auto l : final_labels[k])
 //            q[k].insert(q[k].end(), bb_samples_all[l].begin(), bb_samples_all[l].end());
 //    }
-    
-    if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
+    if(!y.size())
+        if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
         
         unsigned int totalSamples = 0;
         unsigned int totalSamplesNeed = 10;
