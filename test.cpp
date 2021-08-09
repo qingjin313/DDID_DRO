@@ -42,20 +42,7 @@ int main (int, char*[]) {
 		KNP data;
 		KAdaptableInfo_KNP_DD knpInfo;
         int size = 5;
-        bool isDRO = false;
-        
-        // clear file before writing
-        for (uint k = 1; k <= Kmax; k++){
-            std::ofstream myfile;
-            
-            if(isDRO)
-                myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ofstream::out | std::ofstream::trunc);
-            else
-                myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ofstream::out | std::ofstream::trunc);
-            
-            myfile.close();
-        }
-        
+
         // test DRO performance or get RO solution
         for(int seed = 0; seed < 2; seed++){
             gen_KNP(data, size, seed); //origianl seed is 1, old data seed is 5.
@@ -70,11 +57,21 @@ int main (int, char*[]) {
             CPXLPptr lpCopy = NULL;
             for (uint k = 1; k <= Kmax; k++){
                 std::ofstream myfile;
-                if(isDRO)
-                    myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
+                if(pInfo->getVarsX().getDefVarTypeSize("psi"))
+                {
+                    if(seed)
+                        myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
+                    else
+                        myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
+                }
+                    
                 else
-                    myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
-                
+                {
+                    if(seed)
+                        myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
+                    else
+                        myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
+                }
                 S.solve_L_Shaped(k, heuristic_mode, myfile, envCopy, lpCopy);
                 S.reset(*pInfo);
                 myfile.close();
@@ -87,13 +84,14 @@ int main (int, char*[]) {
             pInfo = NULL;
         }
         //test suboptimality of RO solution
-//        std::ofstream myfileOut("/Users/lynn/Desktop/research/DRO/figures/KNP_sub_N=" + std::to_string(size) + ".csv");
+//        std::ofstream myfileOut;
+//        myfileOut.open("/Users/lynn/Desktop/research/DRO/figures/KNP_sub_N=" + std::to_string(size) + ".csv", std::ofstream::out | std::ofstream::trunc);
 //        for(uint k = 1; k <= Kmax; k++){
 //            std::ifstream myfile("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
 //            int seed = 0;
 //            std::string line;
 //
-//            myfileOut << "sol";
+//            myfileOut << "k=" << std::to_string(k);
 //            while(getline(myfile, line)){
 //                std::string solstring;
 //                std::vector<double> roSol;
@@ -103,29 +101,16 @@ int main (int, char*[]) {
 //                    roSol.push_back(std::stod(solstring));
 //                }
 //
-//                gen_KNP(data, size, seed); //origianl seed is 1, old data seed is 5.
+//                gen_KNP(data, size, seed);
 //                knpInfo.setInstance(data);
 //                pInfo = knpInfo.clone();
 //
 //                // CALL THE SOLVER
 //                KAdaptableSolver S(*pInfo);
 //
-//                // get solution of variable w, x and y
-//                int sizeW(pInfo->getVarsX().getDefVarTypeSize("w"));
-//                int sizeX(pInfo->getVarsX().getDefVarTypeSize("x"));
-//                int sizeY(pInfo->getNumSecondStage());
-//
-//                std::vector<bool> wSol;
-//                wSol.resize(sizeW);
-//                std::transform(roSol.begin(), roSol.begin()+sizeW, wSol.begin(), [](double x) { return abs(x) > 1.E-5;});
-//                std::vector<double> xSol(roSol.begin()+sizeW, roSol.begin()+sizeW+sizeX);
-//                std::vector<double> ySol(roSol.begin()+sizeW+sizeX, roSol.end());
-//                assert(uint(ySol.size()) == sizeY*k);
-//
-//                S.setRobSolx(wSol, xSol);
 //                std::vector<double> x;
 //                std::vector<std::vector<double>> q;
-//                S.solve_KAdaptability(k, false, x, q, ySol);
+//                S.solve_KAdaptability(k, false, x, q, roSol);
 //
 //                myfileOut << "," << x[0];
 //                seed++;

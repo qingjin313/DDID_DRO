@@ -66,9 +66,6 @@ void KAdaptableInfo::makeUncSetK(unsigned int K)
         
     Uk.clear();
     
-    // int stat;
-    //CPXXwriteprob(Uk.getENVObject(), Uk.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK_before", "LP");
-    
     // get all data from uncertainty set U
     int numPara = U.getNoOfUncertainParameters();
     int numFacets = U.getNoOfFacets();
@@ -127,6 +124,9 @@ void KAdaptableInfo::makeUncSetK(unsigned int K)
         }
         assert(Uk.getNoOfFacets() == int(numFacets + (numFacets + numW - 1) * l) );
     }
+    
+    int stat;
+    CPXXwriteprob(Uk.getENVObject(), Uk.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK_before", "LP");
 }
 
 //-----------------------------------------------------------------------------------
@@ -280,16 +280,7 @@ void KAdaptableInfo::setW(const std::vector<bool>& wInput)
 
 void KAdaptableInfo::setRobSolx(const std::vector<bool>& wInput, const std::vector<double>& xInput)
 {
-    int startw(X.getFirstDefOfVarType("w") - X.getFirstOfVarType("w"));
-    assert(int(wInput.size()) == X.getDefVarTypeSize("w"));
-    
-    // Always assume the observation variables have the name w and the dimension of w is 1
-    for(unsigned int i = 0; i < wInput.size(); i++)
-    {
-        X.setVarLB(wInput[i], "w", i+startw);
-        X.setVarUB(wInput[i], "w", i+startw);
-    }
-    U.setW(wInput);
+    setW(wInput);
     
     if(xInput.size()){
         int startx(X.getFirstDefOfVarType("x") - X.getFirstOfVarType("x"));

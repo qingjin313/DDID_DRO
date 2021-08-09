@@ -16,6 +16,7 @@
 
 #define CSTR_UNC 1
 #define USE_SINGLE 1
+#define USE_DRO 1
 //-----------------------------------------------------------------------------------
 
 void KAdaptableInfo_KNP_DD::makeUncSet() {
@@ -85,29 +86,31 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
         }
     }
     
-    // lifting uncertainty set for the ambiguity set
-    // bounds for total deviation to the total nominal profit
-    U.addParam(0, 0, profit_dev);
-    numAmbCstr += 1;
-    
-    // bounds for total deviation to the total nominal cost
-    if(CSTR_UNC){
-        U.addParam(0, 0, cost_dev);
+    if(USE_DRO){
+        // lifting uncertainty set for the ambiguity set
+        // bounds for total deviation to the total nominal profit
+        U.addParam(0, 0, profit_dev);
         numAmbCstr += 1;
-    }
-    
-    if(USE_SINGLE){
-        // bounds for single derivation to the single nominal profit
-        for(int i = 0; i<= data.N-1; i++){
-            U.addParam(0, 0, 10);
+        
+        // bounds for total deviation to the total nominal cost
+        if(CSTR_UNC){
+            U.addParam(0, 0, cost_dev);
             numAmbCstr += 1;
         }
         
-        if(CSTR_UNC){
-            // bounds for single derivation to the single nominal cost
+        if(USE_SINGLE){
+            // bounds for single derivation to the single nominal profit
             for(int i = 0; i<= data.N-1; i++){
                 U.addParam(0, 0, 10);
                 numAmbCstr += 1;
+            }
+            
+            if(CSTR_UNC){
+                // bounds for single derivation to the single nominal cost
+                for(int i = 0; i<= data.N-1; i++){
+                    U.addParam(0, 0, 10);
+                    numAmbCstr += 1;
+                }
             }
         }
     }
@@ -124,63 +127,66 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
         }
     }
     
-    std::vector<std::pair<int, double> > cstr_pos;
-    std::vector<std::pair<int, double> > cstr_neg;
-    double nominalTotal = 0.0;
-    
-    cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N, 1.0));
-    cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N, 1.0));
-    for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0){
-        nominalTotal += data.profit[i];
-        cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + i, -1.0));
-        cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + i, 1.0));
-    }
-    U.addFacet(cstr_pos, 'G', -nominalTotal);
-    U.addFacet(cstr_neg, 'G', nominalTotal);
-    
-    if(CSTR_UNC){
-        cstr_pos.clear();
-        cstr_neg.clear();
-        nominalTotal = 0.0;
-
-        cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N + 1, 1.0));
-        cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N + 1, 1.0));
+    if(USE_DRO){
+        std::vector<std::pair<int, double> > cstr_pos;
+        std::vector<std::pair<int, double> > cstr_neg;
+        double nominalTotal = 0.0;
+        
+        cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N, 1.0));
+        cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N, 1.0));
         for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0){
-            nominalTotal += data.cost[i];
-            cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
-            cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, 1.0));
+            nominalTotal += data.profit[i];
+            cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + i, -1.0));
+            cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + i, 1.0));
         }
         U.addFacet(cstr_pos, 'G', -nominalTotal);
         U.addFacet(cstr_neg, 'G', nominalTotal);
-    }
-    
-    if(USE_SINGLE){
-        for(int i = 0; i<= data.N-1; i++){
-            cstr_pos.clear();
-            cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0));
-            cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + i, -1.0));
-            U.addFacet(cstr_pos, 'G', -data.profit[i]);
-
-            cstr_neg.clear();
-            cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0));
-            cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + i, 1.0));
-            U.addFacet(cstr_neg, 'G', data.profit[i]);
-        }
         
         if(CSTR_UNC){
+            cstr_pos.clear();
+            cstr_neg.clear();
+            nominalTotal = 0.0;
+
+            cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N + 1, 1.0));
+            cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N + 1, 1.0));
+            for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0){
+                nominalTotal += data.cost[i];
+                cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
+                cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, 1.0));
+            }
+            U.addFacet(cstr_pos, 'G', -nominalTotal);
+            U.addFacet(cstr_neg, 'G', nominalTotal);
+        }
+        
+        if(USE_SINGLE){
             for(int i = 0; i<= data.N-1; i++){
                 cstr_pos.clear();
-                cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
-                cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
+                cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0));
+                cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + i, -1.0));
                 U.addFacet(cstr_pos, 'G', -data.profit[i]);
 
                 cstr_neg.clear();
-                cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
-                cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, 1.0));
+                cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0));
+                cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + i, 1.0));
                 U.addFacet(cstr_neg, 'G', data.profit[i]);
+            }
+            
+            if(CSTR_UNC){
+                for(int i = 0; i<= data.N-1; i++){
+                    cstr_pos.clear();
+                    cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
+                    cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
+                    U.addFacet(cstr_pos, 'G', -data.profit[i]);
+
+                    cstr_neg.clear();
+                    cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
+                    cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, 1.0));
+                    U.addFacet(cstr_neg, 'G', data.profit[i]);
+                }
             }
         }
     }
+    
     
     numFirstStage += numAmbCstr;
 }
@@ -196,7 +202,8 @@ void KAdaptableInfo_KNP_DD::makeVars() {
 	X.addVarType("O", 'C', -CPX_INFBOUND, +CPX_INFBOUND, 1);
     
     // dual variable for the ambiguity set
-    X.addVarType("psi", 'C', 0, 100, (1+CSTR_UNC)*(1+data.N*USE_SINGLE) );
+    if(USE_DRO)
+        X.addVarType("psi", 'C', 0, 100, (1+CSTR_UNC)*(1+data.N*USE_SINGLE) );
     
 	// x(i) : invest in project i before observing risk factors
 	X.addVarType("w", 'B', 0, 1, data.N);
@@ -352,7 +359,7 @@ void KAdaptableInfo_KNP_DD::makeConsY(unsigned int l) {
             nomProfit += data.profit[i];
             nomCost += data.cost[i];
 		}
-        if(true){
+        if(USE_DRO){
             temp.addTermProduct(getVarIndex_1("psi", 0), data.phi[0].size() + (1+CSTR_UNC)*data.N, 1.0);
             temp.addTermX(getVarIndex_1("psi", 0), -0.15*nomProfit/sqrt(data.N));
             

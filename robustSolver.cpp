@@ -82,7 +82,6 @@ const double BNC_GAP_VALUE = 10;
 //MARK: Qing: whether to do the decision dependent or not
 const bool DECISION_DEPENDENT = 1;
 const bool SOLVE_RLP_FIRST = 0; // In inner loop, whether to solve the lp relaxation of the RMIP first
-const bool USE_SG_CUT = true; // true to use subgradient cut, false to use information cut. Only use information cut when there is only deterministic term of w in the objective function and no w in the constraints with other decision varibles
 
 //-----------------------------------------------------------------------------------
 
@@ -2660,14 +2659,14 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
         //if(warm >= size){
             // step 1: solve relaxation
             
-            std::cout << "------------Iteration " << t << "------------\n\n";
-            
-            status = CPXXmipopt(env, lp);
-            if (!status) {
-                solstat = CPXXgetstat(env, lp);
-                if (solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL) {
-                    solstat = 0;
-                }
+        std::cout << "------------Iteration " << t << "------------\n\n";
+        
+        status = CPXXmipopt(env, lp);
+        if (!status) {
+            solstat = CPXXgetstat(env, lp);
+            if (solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL) {
+                solstat = 0;
+            }
 
             if (CPXXgetx(env, lp, &result[0], 0, size) != 0) {
                 std::cout << "Fail at iteration " << t << std::endl;
@@ -2891,13 +2890,17 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
         
         std::cout << "------------Final Results------------\n";
         write(std::cout, n, K, seed, stat, final_objval, total_solution_time, final_gap);
-        // file to record DRO performance
-        out << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "," << t << "\n";
-        // file to record RO solution, style: name-N-K
-//        int i = 0;
-//        for(; i < int(optsol.size() - 1); i++)
-//            out << optsol[i] << ",";
-//        out << optsol[i] << "\n";
+        if(pInfo->getVarsX().getDefVarTypeSize("psi"))
+            // file to record DRO performance
+            out << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "," << t << "\n";
+        else{
+            // file to record RO solution, style: name-N-K
+            int i = 1;
+            for(; i < int(optsol.size() - 1); i++)
+                out << optsol[i] << ",";
+            out << optsol[i] << "\n";
+        }
+
         
         // write to csv file
 //        std::string method = (isWDetObjOnly()? "inf" : "sg");
@@ -3455,10 +3458,29 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
 
 //-----------------------------------------------------------------------------------
 
-int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q, const std::vector<double>& y) {
+int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q, const std::vector<double>& roSol) {
     
 	assert(pInfo);
 	if (K < 1) MYERROR(EXCEPTION_K);
+    
+    // parse RO solutions
+    // get solution of variable w, x and y
+    std::vector<double> ySol;
+    if(roSol.size()){
+        int sizeW(pInfo->getVarsX().getDefVarTypeSize("w"));
+        int sizeX(pInfo->getVarsX().getDefVarTypeSize("x"));
+        int sizeY(pInfo->getNumSecondStage());
+
+        std::vector<bool> wSol;
+        wSol.resize(sizeW);
+        std::transform(roSol.begin(), roSol.begin()+sizeW, wSol.begin(), [](double x) { return abs(x) > 1.E-5;});
+        std::vector<double> xSol(roSol.begin()+sizeW, roSol.begin()+sizeW+sizeX);
+        ySol = std::vector<double>(roSol.begin()+sizeW+sizeX, roSol.end());
+        assert(uint(ySol.size()) == sizeY*K);
+
+        setRobSolx(wSol, xSol);
+    }
+    
     
     // Create K set of constraints
     pInfo->resize(K);
@@ -3525,20 +3547,18 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	// Generate initial scenario
 	bb_samples.assign(1, qtemp);
     bb_samples_all.assign(1, bb_samples);
-	
+
 	// assign sample to root node
 	updateX(env, lp);
-    assert(!y.size() || y.size() == K * pInfo->getNumSecondStage());
 	for (unsigned int k = 0; k < K; k++) {
-        if(y.size()){
-            std::vector<double> yInput(y.begin() + k * pInfo->getNumSecondStage(), y.begin() + (k+1) * pInfo->getNumSecondStage());
+        if(ySol.size()){
+            std::vector<double> yInput(ySol.begin() + k * pInfo->getNumSecondStage(), ySol.begin() + (k+1) * pInfo->getNumSecondStage());
             setRobSoly(yInput);
         }
 		updateY(env, lp, k);
 	}
 	updateXQ(env, lp, qtemp);
 	updateYQ(env, lp, 0, qtemp);
-
     
 	// set options
 	setCPXoptions(env);
@@ -3698,7 +3718,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 //        for(auto l : final_labels[k])
 //            q[k].insert(q[k].end(), bb_samples_all[l].begin(), bb_samples_all[l].end());
 //    }
-    if(!y.size())
+    if(!roSol.size())
         if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
         
         unsigned int totalSamples = 0;
@@ -3741,6 +3761,8 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
     
     // clear solutions
     xsol.clear();
+    xstatic.clear();
+    xfix.clear();
 
 	// clear samples
 	bb_samples.clear();

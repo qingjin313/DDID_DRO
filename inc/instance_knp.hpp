@@ -139,8 +139,9 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1) {
             data.ksi[n][KNP_NFACTORS] = 1 - yn[KNP_NFACTORS-2];
 
             // randomize in order to eliminate bias
-            std::random_shuffle(data.phi[n].begin() + 1, data.phi[n].end());
-            std::random_shuffle(data.ksi[n].begin() + 1, data.ksi[n].end());
+            std::mt19937 g(static_cast<uint32_t>(1));
+            std::shuffle(data.phi[n].begin() + 1, data.phi[n].end(), g);
+            std::shuffle(data.ksi[n].begin() + 1, data.ksi[n].end(), g);
 
             // check (just to be safe)
             #ifndef NDEBUG

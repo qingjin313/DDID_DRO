@@ -567,10 +567,10 @@ public:
      * @param  h run in heuristic mode
      * @param  x optimal solution (if any) will be returned here
      * @param  q scenarios genrated by branch and bound and cut algorithm for each policy
-     * @param  y fixed second stage solution for evluating the suboptimality of the RO solution
+     * @param  roSol solution for evluating the suboptimality of the RO solution
      * @return   solve status (non-zero value indicates unsuccessful termination)
      */ 
-    int solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q, const std::vector<double>& y = {});
+    int solve_KAdaptability(const unsigned int K, const bool h, std::vector<double>& x, std::vector<std::vector<double>>& q, const std::vector<double>& roSol = {});
 
 	/**
 	 * Solve the separation problem arising in solve_KAdaptability()
