@@ -20,9 +20,11 @@
 #include "robustSolver.hpp"
 #include <regex>
 
-int main (int, char*[]) {
+int main (int argc, char** argv) {
 
-	const bool heuristic_mode = true;
+    assert(argc == 3);
+    
+    const bool heuristic_mode = true;
 	const unsigned int Kmax = 2;
 	KAdaptableInfo *pInfo;
         
@@ -37,11 +39,11 @@ int main (int, char*[]) {
 //        pInfo = peInfo.clone();
 
         
-        // --------- Qing comment out
 		// Generate the instance data
 		KNP data;
 		KAdaptableInfo_KNP_DD knpInfo;
-        int size = 5;
+        int size(std::stod(std::string(argv[1])));
+        std::string filePath(argv[2]);
 
         // test DRO performance or get RO solution
         for(int seed = 0; seed < 2; seed++){
@@ -60,17 +62,17 @@ int main (int, char*[]) {
                 if(pInfo->getVarsX().getDefVarTypeSize("psi"))
                 {
                     if(seed)
-                        myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
+                        myfile.open(filePath + "KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
                     else
-                        myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
+                        myfile.open(filePath + "KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
                 }
                     
                 else
                 {
                     if(seed)
-                        myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
+                        myfile.open(filePath + "KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
                     else
-                        myfile.open("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
+                        myfile.open(filePath + "KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
                 }
                 S.solve_L_Shaped(k, heuristic_mode, myfile, envCopy, lpCopy);
                 S.reset(*pInfo);
@@ -85,9 +87,9 @@ int main (int, char*[]) {
         }
         //test suboptimality of RO solution
 //        std::ofstream myfileOut;
-//        myfileOut.open("/Users/lynn/Desktop/research/DRO/figures/KNP_sub_N=" + std::to_string(size) + ".csv", std::ofstream::out | std::ofstream::trunc);
+//        myfileOut.open(filePath + "KNP_sub_N=" + std::to_string(size) + ".csv", std::ofstream::out | std::ofstream::trunc);
 //        for(uint k = 1; k <= Kmax; k++){
-//            std::ifstream myfile("/Users/lynn/Desktop/research/DRO/figures/KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
+//            std::ifstream myfile(filePath + "KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
 //            int seed = 0;
 //            std::string line;
 //
