@@ -34,9 +34,6 @@ protected:
 	/** Pointer to const information */
 	KAdaptableInfo *pInfo = NULL;
 
-	/** Best known solution for K-adaptable problem (in MILP representation) */
-	std::vector<double> xsol;
-
 
 
 public:
@@ -81,7 +78,8 @@ public:
 	 */
 	void reset(const KAdaptableInfo& pInfoData, const unsigned int K = 1);
 
-
+    /** Best known solution for K-adaptable problem (in MILP representation) */
+    std::vector<double> xsol;
 
 
 
@@ -643,10 +641,12 @@ public:
      * Optimize over w using L-Shaped method
      * @param   K       number of K
      * @param   h       whether use heuristic mode
-     * @param   sol     vector of solution
+     * @param   stream     stream to write solution
+     * @param   envCopy     environment for warm start
+     * @param   lpCopy      integer problem for warm start
      * @return  solve status (non-zero value indicates unsuccessful termination)
      */
-    int solve_L_Shaped2(const unsigned int K, const bool h, std::vector<double>& sol);
+    int solve_L_Shaped2(const unsigned int K, const bool h, std::ostream& out);
     
     /**
      * Return the subgradient cut to the problem using the realization defined by the finite set of scenarios
@@ -662,6 +662,12 @@ public:
     int addSGCut(const std::vector<bool>& w, const std::vector<std::vector<double>>& q, double& rhs, char& sense, CPXNNZ& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval);
     
     int addSGCut(const std::vector<bool>& w, const std::vector<std::vector<double>>& q, std::vector<double>& rhs, std::vector<char>& sense, std::vector<CPXNNZ>& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval, CPXDIM &rcnt, CPXNNZ &nzcnt);
+    
+    std::vector<double> rhs_ws;
+    std::vector<char> sense_ws;
+    std::vector<CPXNNZ> rmatbeg_ws;
+    std::vector<CPXDIM> rmatind_ws;
+    std::vector<double> rmatval_ws;
 };
 
 #endif

@@ -2563,7 +2563,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
 //    std::vector<double> ubs;
 //    std::vector<double> phis;
 //    std::vector<double> lbs;
-    std::vector<double> optsol;
+    //std::vector<double> optsol;
     
 //    sol.clear();
 
@@ -2768,7 +2768,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
             
             if(tempval < bestU){
                 setBestU(tempval);
-                optsol = x;
+                xsol = x;
             }
             
             // ubs.emplace_back(bestU);
@@ -2896,11 +2896,11 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
         else{
             // file to record RO solution, style: name-N-K
             int i = 1;
-            for(; i < int(optsol.size() - 1); i++)
-                out << optsol[i] << ",";
-            out << optsol[i] << "\n";
+            for(; i < int(xsol.size() - 1); i++)
+                out << xsol[i] << ",";
+            out << xsol[i] << "\n";
         }
-
+        xsol.clear();
         
         // write to csv file
 //        std::string method = (isWDetObjOnly()? "inf" : "sg");
@@ -2938,10 +2938,11 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
     return solstat;
 }
 
-int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::vector<double>& sol)
+int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::ostream& out)
 {
     // initialize the problem
     NK = K;
+    std::vector<double> optsol;
     
     int status;
     int solstat;
@@ -2999,6 +3000,8 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::v
     // CPXXsetintparam(env, CPX_PARAM_MIPCBREDLP, CPX_OFF);
     CPXXsetintparam(env, CPX_PARAM_REDUCE, CPX_PREREDUCE_PRIMALONLY);
     CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
+    CPXXsetdblparam(env, CPX_PARAM_TILIM, 7200);
+    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.005);
 
     CPXXsetlazyconstraintcallbackfunc(env, cutCB_solve_LS_cuttingPlane, this);
 
@@ -3011,8 +3014,8 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::v
         if (solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL) {
             solstat = 0;
         }
-        sol.resize(CPXXgetnumcols(env, lp));
-        if (CPXXgetx(env, lp, &sol[0], 0, sol.size() - 1) != 0) {
+        optsol.resize(CPXXgetnumcols(env, lp));
+        if (CPXXgetx(env, lp, &optsol[0], 0, optsol.size() - 1) != 0) {
             std::cout << "Enable to get optimal w! /n";
             assert(false);
         }
@@ -3050,9 +3053,18 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::v
         std::cout << "------------Final Results------------\n";
         write(std::cout, n, K, seed, stat, final_objval, total_solution_time, final_gap);
         std::cout << "----------" << t << " iterations in total----------\n\n";
-        
+        if(pInfo->getVarsX().getDefVarTypeSize("psi"))
+            // file to record DRO performance
+            out << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "," << t << "\n";
+        else{
+            // file to record RO solution, style: name-N-K
+            int i = 1;
+            for(; i < int(xsol.size() - 1); i++)
+                out << xsol[i] << ",";
+            out << xsol[i] << "\n";
+        }
     }
-    
+    xsol.clear();
     // Free memory
     CPXXfreeprob(env, &lp);
     CPXXcloseCPLEX (&env);
@@ -3572,7 +3584,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	CPXXsetintparam(env, CPX_PARAM_MIPCBREDLP, CPX_OFF);
 	CPXXsetintparam(env, CPX_PARAM_REDUCE, CPX_PREREDUCE_PRIMALONLY);
 	CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
-    CPXXsetdblparam(env, CPXPARAM_TimeLimit, 300.0);
+    CPXXsetdblparam(env, CPXPARAM_TimeLimit, 600.0);
     CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.05);
 
 	if (!hasObjectiveUncOnly() && !BNC_BRANCH_ALL_CONSTR){
@@ -5276,7 +5288,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     std::iota(rmatind.begin(), rmatind.end(), 0);
     std::vector<double> rmatval;
     
-    // Add cuts when current best solution is smaller than the current upper bound, exist if not
+    // Add cuts when the current w hasn't been iterated, exist if yes
     if ( S->checkW(w) ) exitCallback(cut);
     
     std::cout << "------------Iteration " << ++S->t << "------------\n\n";
@@ -5305,9 +5317,10 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     // if given w_t is feasible for the inner problem, add optimality cut
     if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
         
-        if(x[0] < S->bestU)
+        if(x[0] < S->bestU){
             S->setBestU(x[0]);
-            
+            S->xsol=x;
+        }
         
         // add subgradient cut
         if(!S->isWDetObjOnly()){
@@ -5371,20 +5384,30 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     // if given w_t is infeasible for the inner problem, add feasibility cut
     else if(solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD || solstat == CPXMIP_TIME_LIM_INFEAS){
 
-        std::vector<double> rmatval;
+        // std::vector<double> rmatval;
+        
+        std::vector<double> rmatval_feas;
+        std::vector<CPXDIM> rmatind_feas;
         
         int sizeN = 0;
         // coefficient for variable w
+//        for(int i = 0; i < size; i++)
+//        {
+//            if(w[i] == 1){
+//                rmatval.emplace_back(-1.0);
+//                sizeN += 1;
+//            }
+//            else
+//                rmatval.emplace_back(1.0);
+//        }
         for(int i = 0; i < size; i++)
         {
             if(w[i] == 1){
-                rmatval.emplace_back(-1.0);
+                rmatind_feas.emplace_back(i+1);
+                rmatval_feas.emplace_back(-1.0);
                 sizeN += 1;
             }
-            else
-                rmatval.emplace_back(1.0);
         }
-        
         double rhs = 1 - sizeN;
         
         CPXXcutcallbackadd(env, cbdata, wherefrom, size, rhs, sense, &rmatind[1], &rmatval[0], CPX_USECUT_FORCE);

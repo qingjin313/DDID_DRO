@@ -25,7 +25,7 @@ int main (int argc, char** argv) {
     assert(argc == 3);
     
     const bool heuristic_mode = true;
-	const unsigned int Kmax = 2;
+	const unsigned int Kmax = 4;
 	KAdaptableInfo *pInfo;
         
 	try {
@@ -44,9 +44,10 @@ int main (int argc, char** argv) {
 		KAdaptableInfo_KNP_DD knpInfo;
         int size(std::stod(std::string(argv[1])));
         std::string filePath(argv[2]);
-
+        
+        std::cout << size << ", " << filePath;
         // test DRO performance or get RO solution
-        for(int seed = 0; seed < 2; seed++){
+        for(int seed = 0; seed < 20; seed++){
             gen_KNP(data, size, seed); //origianl seed is 1, old data seed is 5.
             knpInfo.setInstance(data);
             pInfo = knpInfo.clone();
@@ -66,7 +67,7 @@ int main (int argc, char** argv) {
                     else
                         myfile.open(filePath + "KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
                 }
-                    
+
                 else
                 {
                     if(seed)
