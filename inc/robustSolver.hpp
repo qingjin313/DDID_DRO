@@ -635,7 +635,8 @@ public:
      * @param   lpCopy      integer problem for warm start
      * @return  solve status (non-zero value indicates unsuccessful termination)
      */
-    int solve_L_Shaped(const unsigned int K, const bool h, std::ostream& out, CPXENVptr& envCopy, CPXLPptr& lpCopy);
+    int solve_L_Shaped(const unsigned int K, const bool h, std::ostream& out);
+//    int solve_L_Shaped(const unsigned int K, const bool h, std::ostream& out, CPXENVptr& envCopy, CPXLPptr& lpCopy);
     
     /**
      * Optimize over w using L-Shaped method
