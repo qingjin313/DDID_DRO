@@ -535,6 +535,9 @@ public:
         pInfo->setRobSoly(yInput);
     }
     
+    inline void setPsi(const std::vector<double>& psiInput) const {
+        pInfo->setPsi(psiInput);
+    }
 	/**
 	 * Is the underlying problem a pure LP?
 	 * @return true if the problem is continuous
@@ -669,6 +672,16 @@ public:
     std::vector<CPXNNZ> rmatbeg_ws;
     std::vector<CPXDIM> rmatind_ws;
     std::vector<double> rmatval_ws;
+    
+    /**
+     Return the objective value of given decision variables and possible values of the psi variables, for np-hard proof
+     @param  K    number of k
+     @param  roSol    value of the decision variables
+     @param  bounds   bounds of psi to test
+     @param  numBP      number of break points of each element in psi
+     @param  results   result of fixed values
+     */
+    int drawPsi(const unsigned int K, const std::vector<double>& roSol, const std::vector<std::pair<double, double>>& bounds, const std::vector<int>& numBP, std::vector<double>& results);
 };
 
 #endif

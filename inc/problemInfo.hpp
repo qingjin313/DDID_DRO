@@ -165,6 +165,7 @@ public:
     
     void setRobSolx(const std::vector<bool>& wInput, const std::vector<double>& xInput);
     void setRobSoly(const std::vector<double>& yInput);
+    void setPsi(const std::vector<double>& psiInput);
     inline void setXiBar(const std::vector<double>& xi_bar) {U.setXiBar(xi_bar);}
     inline void resetXiBar() {U.resetXiBar();}
     inline int getWSize() {return U.getWSize();}

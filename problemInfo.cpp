@@ -306,3 +306,16 @@ void KAdaptableInfo::setRobSoly(const std::vector<double>& yInput)
         }
     }
 }
+
+void KAdaptableInfo::setPsi(const std::vector<double>& psiInput)
+{
+    if(psiInput.size()){
+        int startPsi(X.getFirstDefOfVarType("psi") - X.getFirstOfVarType("psi"));
+        assert(int(psiInput.size()) == X.getDefVarTypeSize("psi"));
+        for(unsigned int i = 0; i < psiInput.size(); i++)
+        {
+            X.setVarLB(psiInput[i], "psi", i+startPsi);
+            X.setVarUB(psiInput[i], "psi", i+startPsi);
+        }
+    }
+}

@@ -214,6 +214,28 @@ static inline void write(std::ostream& out, std::string N, unsigned int K, std::
 	out << "  \n\n";
 }
 
+static inline void getIndices(std::vector<int>& numBP, std::vector<std::vector<int>>& indices){
+    if(!numBP.size())
+        return;
+    else{
+        assert(numBP[0] >= 2);
+        std::vector<std::vector<int>> newIndices;
+        for(int i = 0; i < numBP[0]; i++){
+            if(!indices.size()){
+                std::vector<int> newIndex = {i};
+                newIndices.emplace_back(newIndex);
+            }
+            for(int j = 0; j < int(indices.size()); j++){
+                std::vector<int> copyIndex = indices.at(j);
+                copyIndex.emplace_back(i);
+                newIndices.emplace_back(copyIndex);
+            }
+        }
+        numBP.erase(numBP.begin());
+        indices = newIndices;
+        return getIndices(numBP, indices);
+    }
+}
 //-----------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------
@@ -3354,6 +3376,40 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
     assert((CPXDIM)rhs.size() == rcnt);
     assert(rmatind.size() == rmatval.size());
     assert((CPXNNZ)rmatind.size() == nzcnt);
+    return 0;
+}
+
+int KAdaptableSolver::drawPsi(const unsigned int K, const std::vector<double>& roSol, const std::vector<std::pair<double, double>>& bounds, const std::vector<int>& numBP, std::vector<double>& results)
+{
+    assert(numBP.size() == bounds.size());
+    
+    //generate index
+    std::vector<std::vector<int>> indice;
+    //BP should start at 0
+    std::vector<int> num = numBP;
+    getIndices(num, indice);
+    
+    for(auto bound : bounds)
+        assert(bound.first < bound.second);
+    
+    for(auto index : indice){
+        std::vector<double> psi;
+        for(auto i : index){
+            psi.emplace_back(bounds[i].first + (bounds[i].second - bounds[i].first)*i);
+        }
+        setPsi(psi);
+        
+        std::vector<double> x;
+        std::vector<std::vector<double>> q;
+        
+        int status;
+        status = solve_KAdaptability(K, false, x, q, roSol);
+        if(status)
+            return status;
+        
+        results.emplace_back(x[0]);
+    }
+    
     return 0;
 }
 //int KAdaptableSolver::solve_YQRobust_cuttingplane(const std::vector<double>& qini, CstrCPtr con)
