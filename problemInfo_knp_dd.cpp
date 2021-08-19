@@ -101,14 +101,16 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
         if(USE_SINGLE){
             // bounds for single derivation to the single nominal profit
             for(int i = 0; i<= data.N-1; i++){
-                U.addParam(0, 0, 10);
+                // U.addParam(0, 0, profit_high[i]);
+                U.addParam(0, 0, 4);
                 numAmbCstr += 1;
             }
             
             if(CSTR_UNC){
                 // bounds for single derivation to the single nominal cost
                 for(int i = 0; i<= data.N-1; i++){
-                    U.addParam(0, 0, 10);
+                    // U.addParam(0, 0, cost_high[i]);
+                    U.addParam(0, 0, 20);
                     numAmbCstr += 1;
                 }
             }

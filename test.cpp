@@ -22,7 +22,7 @@
 
 int main (int argc, char** argv) {
 
-    assert(argc == 3);
+    assert(argc == 4);
     
     const bool heuristic_mode = true;
 	const unsigned int Kmax = 4;
@@ -44,17 +44,17 @@ int main (int argc, char** argv) {
 		KAdaptableInfo_KNP_DD knpInfo;
         int size(std::stod(std::string(argv[1])));
         std::string filePath(argv[2]);
+        int seed(std::stod(std::string(argv[3])));
         
         // std::cout << size << ", " << filePath;
         // test DRO performance or get RO solution
-        for(int seed = 0; seed < 20; seed++){
+        //for(int seed = 0; seed < 20; seed++){
             gen_KNP(data, size, seed); //origianl seed is 1, old data seed is 5.
             knpInfo.setInstance(data);
             pInfo = knpInfo.clone();
 
             // CALL THE SOLVER
             KAdaptableSolver S(*pInfo);
-
             // std::ostream& out;
 //            CPXENVptr envCopy = NULL;
 //            CPXLPptr lpCopy = NULL;
@@ -62,7 +62,7 @@ int main (int argc, char** argv) {
                 std::ofstream myfile;
                 if(pInfo->getVarsX().getDefVarTypeSize("psi"))
                 {
-                    if(seed)
+                    if(true)
                         myfile.open(filePath + "KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
                     else
                         myfile.open(filePath + "KNP_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
@@ -70,13 +70,13 @@ int main (int argc, char** argv) {
 
                 else
                 {
-                    if(seed)
+                    if(true)
                         myfile.open(filePath + "KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
                     else
                         myfile.open(filePath + "KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
                 }
 //                S.solve_L_Shaped(k, heuristic_mode, myfile, envCopy, lpCopy);
-                S.solve_L_Shaped2(k, heuristic_mode, myfile);
+                S.solve_L_Shaped2(k, heuristic_mode, std::cout);
                 S.reset(*pInfo);
                 myfile.close();
             }
@@ -91,7 +91,7 @@ int main (int argc, char** argv) {
             
             delete pInfo;
             pInfo = NULL;
-        }
+        //}
         //test suboptimality of RO solution
 //        std::ofstream myfileOut;
 //        myfileOut.open(filePath + "KNP_sub_N=" + std::to_string(size) + ".csv", std::ofstream::out | std::ofstream::trunc);
@@ -103,13 +103,15 @@ int main (int argc, char** argv) {
 //            myfileOut << "k=" << std::to_string(k);
 //            while(getline(myfile, line)){
 //                std::string solstring;
+//                std::vector<double> data;
 //                std::vector<double> roSol;
 //                // read RO solution from the file
 //                std::stringstream ss(line);
 //                while(std::getline(ss, solstring, ',')){
-//                    roSol.push_back(std::stod(solstring));
+//                    data.push_back(std::stod(solstring));
 //                }
-//
+//                seed = data[0]
+//                roSol = std::vector<double>(data.begin() + 1, data.end());
 //                gen_KNP(data, size, seed);
 //                knpInfo.setInstance(data);
 //                pInfo = knpInfo.clone();
@@ -122,7 +124,6 @@ int main (int argc, char** argv) {
 //                S.solve_KAdaptability(k, false, x, q, roSol);
 //
 //                myfileOut << "," << x[0];
-//                seed++;
 //            }
 //            myfileOut << "\n";
 //            myfile.close();

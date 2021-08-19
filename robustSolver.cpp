@@ -2944,10 +2944,11 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
         write(std::cout, n, K, seed, stat, final_objval, total_solution_time, final_gap);
         if(pInfo->getVarsX().getDefVarTypeSize("psi"))
             // file to record DRO performance
-            out << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "," << t << "\n";
+            out << seed << "," << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "," << t << "\n";
         else{
             // file to record RO solution, style: name-N-K
             int i = 1;
+            out << seed << ",";
             for(; i < int(xsol.size() - 1); i++)
                 out << xsol[i] << ",";
             out << xsol[i] << "\n";
@@ -3053,7 +3054,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     CPXXchgobjsen(env, lp, CPX_MIN);
     CPXXchgprobtype(env, lp, CPXPROB_MILP); // to use callbacks
     setCPXoptions(env);
-    CPXXsetintparam(env, CPXPARAM_ScreenOutput, CPX_OFF);
+    CPXXsetintparam(env, CPXPARAM_ScreenOutput, CPX_ON);
 
     // callbacks
     // CPXXsetintparam(env, CPX_PARAM_MIPSEARCH, CPX_MIPSEARCH_TRADITIONAL);
@@ -3061,7 +3062,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     CPXXsetintparam(env, CPX_PARAM_REDUCE, CPX_PREREDUCE_PRIMALONLY);
     CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
     CPXXsetintparam(env, CPX_PARAM_MIPCBREDLP, CPX_OFF);
-    CPXXsetdblparam(env, CPX_PARAM_TILIM, 7200);
+    CPXXsetdblparam(env, CPXPARAM_TimeLimit, 7200);
     CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.005);
 
     CPXXsetlazyconstraintcallbackfunc(env, cutCB_solve_LS_cuttingPlane, this);
@@ -3116,10 +3117,11 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
         std::cout << "----------" << t << " iterations in total----------\n\n";
         if(pInfo->getVarsX().getDefVarTypeSize("psi"))
             // file to record DRO performance
-            out << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "," << t << "\n";
+            out << seed << "," << stat << "," << final_objval << "," << total_solution_time << "," << final_gap << "," << t << "\n";
         else{
             // file to record RO solution, style: name-N-K
             int i = 1;
+            out << seed << ",";
             for(; i < int(xsol.size() - 1); i++)
                 out << xsol[i] << ",";
             out << xsol[i] << "\n";
@@ -3682,7 +3684,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	CPXXsetintparam(env, CPX_PARAM_REDUCE, CPX_PREREDUCE_PRIMALONLY);
 	CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
     CPXXsetdblparam(env, CPXPARAM_TimeLimit, 600.0);
-    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.05);
+    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.01);
 
 	if (!hasObjectiveUncOnly() && !BNC_BRANCH_ALL_CONSTR){
 		CPXXsetusercutcallbackfunc(env, cutCB_solve_KAdaptability_cuttingPlane, this);
@@ -3703,7 +3705,8 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 
 
 	// add MIP start
-	if (!xsol.empty()) {
+    // if (!xsol.empty())
+	if (false) {
 		const unsigned int Kx = getNumPolicies(xsol); assert(Kx);
 		const auto x2 = xsol.begin() + pInfo->getNumFirstStage();
 
@@ -3771,8 +3774,12 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 			assert(feasible_KAdaptability(x, K, Q_TEMP));
 		}
         // ???: Qing use upper bound or lower bound for the problem hit time limitation?
+        // MARK: should be lower bound
         if (solstat == CPXMIP_TIME_LIM_FEAS)
+            CPXXgetbestobjval(env, lp, &x[0]);
+        if (solstat == CPXMIP_OPTIMAL_TOL)
             CPXXgetobjval(env, lp, &x[0]);
+
 	}
 	else {
 		MYERROR(status);
@@ -3782,10 +3789,10 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
     
     
 	// Resize xfix for heuristic
-	if (heuristic_mode) {
-		xfix = this->xsol;
-		resizeX(xfix, K);
-	}
+//	if (heuristic_mode) {
+//		xfix = this->xsol;
+//		resizeX(xfix, K);
+//	}
 
 
 	
@@ -3869,7 +3876,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
     }
     
     // clear solutions
-    xsol.clear();
+    // xsol.clear();
     xstatic.clear();
     xfix.clear();
 
