@@ -110,7 +110,7 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
                 // bounds for single derivation to the single nominal cost
                 for(int i = 0; i<= data.N-1; i++){
                     // U.addParam(0, 0, cost_high[i]);
-                    U.addParam(0, 0, 20);
+                    U.addParam(0, 0, 25);
                     numAmbCstr += 1;
                 }
             }

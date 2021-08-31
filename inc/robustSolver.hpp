@@ -80,7 +80,9 @@ public:
 
     /** Best known solution for K-adaptable problem (in MILP representation) */
     std::vector<double> xsol;
-
+    
+    /** Best known solution for K-adaptable problem (for evluating suboptimality) */
+    std::vector<double> xsolOut;
 
 
 

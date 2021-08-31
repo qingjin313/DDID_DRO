@@ -50,6 +50,8 @@ static std::vector<std::pair<double, double> > ZT_VALUES, BOUND_VALUES;
 // static global members
 static int NUM_DUMMY_NODES = 0, TX = 0;
 static double START_TS = 0;
+volatile int TERMINATOR;
+volatile int TERMINATOR_INNER;
 static int CPXPUBLIC cutCB_solve_SRO_cuttingPlane(CPXCENVptr env, void *cbdata, int wherefrom, void *cbhandle, int *useraction_p);
 static int CPXPUBLIC cutCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void *cbdata, int wherefrom, void *cbhandle, int *useraction_p);
 static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void *cbdata, int wherefrom, void *cbhandle, double objval, double *x, int *isfeas_p, int *useraction_p);
@@ -2621,7 +2623,8 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
     std::vector<double> xTemp;
     solve_DET(pInfo->getNominal(), xTemp);
     setL(xTemp[0]);
-    setBestU(+CPX_INFBOUND);
+    if(K==1 || !h)
+        setBestU(+CPX_INFBOUND);
     addVariable(env, lp, 'C', L, +CPX_INFBOUND, 1.0, "theta");
     
     // add w variables, index begin from 1
@@ -2740,14 +2743,16 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
         t += 1;
         setW(w);
         
+        // pInfo->setVarUB(bestU, 0);
+        
         evalstat = solve_KAdaptability(K, false, x, q);
         // feasible_KAdaptability(x, K, Q_TEMP);
 
 //        if(result[0] > x[0] - EPS_INFEASIBILITY_X)
 //            break;
         // if given w_t is feasible for the inner problem, add optimality cut
-        if(evalstat == CPXMIP_OPTIMAL || evalstat == CPXMIP_OPTIMAL_TOL || evalstat == CPXMIP_TIME_LIM_FEAS){
-            
+        // if(evalstat == CPXMIP_OPTIMAL || evalstat == CPXMIP_OPTIMAL_TOL || evalstat == CPXMIP_TIME_LIM_FEAS){
+        if(q.size()){
             if(!isWDetObjOnly())
             {
                 // get subgradient cut
@@ -2792,8 +2797,11 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
                     std::cout << "Fail at adding sub-gradient cut\n\n";
                     assert(status);
                 }
+                std::cout << "Add subgradient cut\n\n";
             }
+        }
             
+        if(evalstat == CPXMIP_OPTIMAL || evalstat == CPXMIP_OPTIMAL_TOL || evalstat == CPXMIP_TIME_LIM_FEAS || evalstat == CPXMIP_ABORT_FEAS){
             // add integer cut
             phi_wt = x[0];
             tempval = objval - result[0] + phi_wt;
@@ -2810,7 +2818,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
             
             if(tempval < bestU){
                 setBestU(tempval);
-                xsol = x;
+                xsolOut = x;
             }
             
             // ubs.emplace_back(bestU);
@@ -2861,51 +2869,73 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
         
         // should be treated more carefully
         // if given w_t is infeasible for the inner problem, add feasibility cut
-        else if(evalstat == CPXMIP_INFEASIBLE || evalstat == CPXMIP_INForUNBD){
+        else if(evalstat == CPXMIP_INFEASIBLE || evalstat == CPXMIP_INForUNBD || evalstat == CPXMIP_TIME_LIM_INFEAS || evalstat == CPXMIP_ABORT_INFEAS){
+            if(evalstat == CPXMIP_INFEASIBLE || evalstat == CPXMIP_INForUNBD){
 
-            std::vector<double> rmatval_feas;
-            std::vector<CPXDIM> rmatind_feas;
-            
-            int sizeN = 0;
-            
-            // std::vector<double> rmatval;
-            // coefficient for variable w
-//            for(int i = 0; i < size; i++)
-//            {
-//                if(w[i] == 1){
-//                    rmatval.emplace_back(-1.0);
-//                    sizeN += 1;
-//                }
-//                else
-//                    rmatval.emplace_back(1.0);
-//            }
-//
-//            double rhs = 1 - sizeN;
-//
-//            CPXXaddrows(env, lp, 0, 1, size, &rhs, &sense, &rmatbeg, &rmatind[1], &rmatval[0], nullptr, nullptr);
-            for(int i = 0; i < size; i++)
-            {
-                if(w[i] == 1){
-                    rmatind_feas.emplace_back(i+1);
-                    rmatval_feas.emplace_back(-1.0);
-                    sizeN += 1;
+                std::vector<double> rmatval_feas;
+                std::vector<CPXDIM> rmatind_feas;
+                
+                int sizeN = 0;
+                
+                // std::vector<double> rmatval;
+                // coefficient for variable w
+    //            for(int i = 0; i < size; i++)
+    //            {
+    //                if(w[i] == 1){
+    //                    rmatval.emplace_back(-1.0);
+    //                    sizeN += 1;
+    //                }
+    //                else
+    //                    rmatval.emplace_back(1.0);
+    //            }
+    //
+    //            double rhs = 1 - sizeN;
+    //
+    //            CPXXaddrows(env, lp, 0, 1, size, &rhs, &sense, &rmatbeg, &rmatind[1], &rmatval[0], nullptr, nullptr);
+                for(int i = 0; i < size; i++)
+                {
+                    if(w[i] == 1){
+                        rmatind_feas.emplace_back(i+1);
+                        rmatval_feas.emplace_back(-1.0);
+                        sizeN += 1;
+                    }
                 }
+                double rhs = 1 - sizeN;
+                
+                CPXXaddrows(env, lp, 0, 1, sizeN, &rhs, &sense, &rmatbeg, &rmatind_feas[0], &rmatval_feas[0], nullptr, nullptr);
+                //numRows++;
+                // subgradient cut is useful for subgradient cut
+                assert(rhs_ws.size() == sense_ws.size());
+                assert(rhs_ws.size() == rmatbeg_ws.size());
+                rhs_ws.emplace_back(rhs);
+                sense_ws.emplace_back(sense);
+                assert(rmatind_ws.size() == rmatval_ws.size());
+                rmatbeg_ws.emplace_back(rmatind_ws.size());
+                rmatind_ws.insert(rmatind_ws.end(), rmatind_feas.begin(), rmatind_feas.end());
+                rmatval_ws.insert(rmatval_ws.end(), rmatval_feas.begin(), rmatval_feas.end());
+                
+                std::cout << "Add feasibility cut\n\n";
             }
-            double rhs = 1 - sizeN;
-            
-            CPXXaddrows(env, lp, 0, 1, sizeN, &rhs, &sense, &rmatbeg, &rmatind_feas[0], &rmatval_feas[0], nullptr, nullptr);
-            //numRows++;
-            // subgradient cut is useful for subgradient cut
-            assert(rhs_ws.size() == sense_ws.size());
-            assert(rhs_ws.size() == rmatbeg_ws.size());
-            rhs_ws.emplace_back(rhs);
-            sense_ws.emplace_back(sense);
-            assert(rmatind_ws.size() == rmatval_ws.size());
-            rmatbeg_ws.emplace_back(rmatind_ws.size());
-            rmatind_ws.insert(rmatind_ws.end(), rmatind_feas.begin(), rmatind_feas.end());
-            rmatval_ws.insert(rmatval_ws.end(), rmatval_feas.begin(), rmatval_feas.end());
-            
-            std::cout << "Add feasibility cut\n\n";
+            else{
+                int sizeN = 0;
+                
+                std::vector<double> rmatval;
+                // coefficient for variable w
+                for(int i = 0; i < size; i++)
+                {
+                    if(w[i] == 1){
+                        rmatval.emplace_back(-1.0);
+                        sizeN += 1;
+                    }
+                    else
+                        rmatval.emplace_back(1.0);
+                }
+
+                double rhs = 1 - sizeN;
+
+                CPXXaddrows(env, lp, 0, 1, size, &rhs, &sense, &rmatbeg, &rmatind[1], &rmatval[0], nullptr, nullptr);
+                std::cout << "Add time limit or upper bound cut-off feasibility cut\n\n";
+            }
         }
         
         else{
@@ -2949,11 +2979,11 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
             // file to record RO solution, style: name-N-K
             int i = 1;
             out << seed << ",";
-            for(; i < int(xsol.size() - 1); i++)
-                out << xsol[i] << ",";
-            out << xsol[i] << "\n";
+            for(; i < int(xsolOut.size() - 1); i++)
+                out << xsolOut[i] << ",";
+            out << xsolOut[i] << "\n";
         }
-        xsol.clear();
+        xsolOut.clear();
         
         // write to csv file
 //        std::string method = (isWDetObjOnly()? "inf" : "sg");
@@ -3008,13 +3038,17 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     env = CPXXopenCPLEX (&status);
     lp  = CPXXcreateprob(env, &status, "KADAPTABILITY_L_SHAPED");
     
+    TERMINATOR = 0;
+    CPXXsetterminate(env, &TERMINATOR);
+    
     // add epigraph variable, indexd as 0
     // set lower bound of the optimal value
     std::vector<double> xTemp;
     solve_DET(pInfo->getNominal(), xTemp);
     setL(xTemp[0]);
     // int size = getTrueWSize();
-    setBestU(+CPX_INFBOUND);
+    if(K==1 || !h)
+        setBestU(+CPX_INFBOUND);
     t = 0;
     // checkRep = false;
     
@@ -3063,7 +3097,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
     CPXXsetintparam(env, CPX_PARAM_MIPCBREDLP, CPX_OFF);
     CPXXsetdblparam(env, CPXPARAM_TimeLimit, 7200);
-    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.005);
+    // CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.005);
 
     CPXXsetlazyconstraintcallbackfunc(env, cutCB_solve_LS_cuttingPlane, this);
 
@@ -3107,8 +3141,8 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
         const std::string seed(s, pos_keyword + 1, pos_dash - pos_keyword - 1);
         std::string stat = "Unknown";
         if (solstat == 0) stat = "Optimal";
-        if (solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD) stat = "Infeas";
-        if (solstat == CPXMIP_TIME_LIM_FEAS || solstat == CPXMIP_TIME_LIM_INFEAS) stat = "Time Lim";
+        if (solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD || solstat == CPXMIP_ABORT_INFEAS) stat = "Infeas";
+        if (solstat == CPXMIP_TIME_LIM_FEAS || solstat == CPXMIP_TIME_LIM_INFEAS || solstat == CPXMIP_ABORT_FEAS) stat = "Time Lim";
         if (solstat == CPXMIP_MEM_LIM_FEAS || solstat == CPXMIP_MEM_LIM_INFEAS) stat = "Mem Lim";
         if (heuristic_mode) stat = "Heur";
         
@@ -3122,14 +3156,15 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
             // file to record RO solution, style: name-N-K
             int i = 1;
             out << seed << ",";
-            for(; i < int(xsol.size() - 1); i++)
-                out << xsol[i] << ",";
-            out << xsol[i] << "\n";
+            for(; i < int(xsolOut.size() - 1); i++)
+                out << xsolOut[i] << ",";
+            out << xsolOut[i] << "\n";
         }
     }
     
     wBounds.clear();
     xsol.clear();
+    xsolOut.clear();
     // Free memory
     CPXXfreeprob(env, &lp);
     CPXXcloseCPLEX (&env);
@@ -3616,8 +3651,8 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	env = CPXXopenCPLEX (&status);
 	lp  = CPXXcreateprob(env, &status, "KADAPTABILITY_CUTTING_PLANE");
 
-
-
+    TERMINATOR_INNER = 0;
+    CPXXsetterminate(env, &TERMINATOR_INNER);
 
 
 
@@ -3673,7 +3708,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
     
 	// set options
 	setCPXoptions(env);
-	CPXXsetintparam(env, CPXPARAM_ScreenOutput, CPX_OFF);
+	CPXXsetintparam(env, CPXPARAM_ScreenOutput, CPX_ON);
 	CPXXchgprobtype(env, lp, CPXPROB_MILP); // to use callbacks
 	CPXXchgobjsen(env, lp, CPX_MIN);
 
@@ -3684,7 +3719,9 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 	CPXXsetintparam(env, CPX_PARAM_REDUCE, CPX_PREREDUCE_PRIMALONLY);
 	CPXXsetintparam(env, CPX_PARAM_PRELINEAR, CPX_OFF);
     CPXXsetdblparam(env, CPXPARAM_TimeLimit, 600.0);
-    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.01);
+//    CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0.01);
+//    if(K >= 2)
+//        CPXXsetdblparam(env, CPXPARAM_MIP_Tolerances_UpperCutoff, bestU);
 
 	if (!hasObjectiveUncOnly() && !BNC_BRANCH_ALL_CONSTR){
 		CPXXsetusercutcallbackfunc(env, cutCB_solve_KAdaptability_cuttingPlane, this);
@@ -3821,6 +3858,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 		if (solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD) stat = "Infeas";
 		if (solstat == CPXMIP_TIME_LIM_FEAS || solstat == CPXMIP_TIME_LIM_INFEAS) stat = "Time Lim";
 		if (solstat == CPXMIP_MEM_LIM_FEAS || solstat == CPXMIP_MEM_LIM_INFEAS) stat = "Mem Lim";
+        if (solstat == CPXMIP_ABORT_FEAS || solstat == CPXMIP_ABORT_INFEAS) stat = "UB Cutoff";
 		if (heuristic_mode) stat = "Heur";
 		write(std::cout, n, K, seed, stat, final_objval, total_solution_time, final_gap);
 
@@ -4239,11 +4277,15 @@ static void CPXPUBLIC deletenodeCB_solve_KAdaptability_cuttingPlane(CPXCENVptr, 
 static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void *cbdata, int wherefrom, void *cbhandle, double objval, double *x_, int *isfeas_p, int *useraction_p) {
 	enterCallback(inc);
 	*useraction_p = CPX_CALLBACK_SET;
-
+    
 	// Get K-Adaptability solver
 	auto S = static_cast<KAdaptableSolver*>(cbhandle);
 	const unsigned int K = S->NK;
-
+    
+    // Get current lower bound
+    double lb = 0; CPXXgetcallbackinfo(env, cbdata, wherefrom, CPX_CALLBACK_INFO_BEST_REMAINING, &lb);
+    if(lb >= S->bestU)
+        TERMINATOR_INNER = 1;
 
 	// Get node data	
 	void *nodeData = NULL;
@@ -4283,7 +4325,7 @@ static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 			assert(static_cast<CPLEX_CB_node*>(nodeData)->numNodes > 1);
 			assert(static_cast<CPLEX_CB_node*>(nodeData)->numNodes < K);
 			assert(!static_cast<CPLEX_CB_node*>(nodeData)->fromIncumbentCB);
-			assert(!S->feasible_YQ(x, K, Q_TEMP));
+			//assert(!S->feasible_YQ(x, K, Q_TEMP));
 			*isfeas_p = 0;
 			exitCallback(inc);
 		}
@@ -5358,7 +5400,12 @@ static int CPXPUBLIC nodeCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, voi
 static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, int wherefrom, void *cbhandle, int *useraction_p) {
     enterCallback(cut);
     *useraction_p = CPX_CALLBACK_DEFAULT;
-
+    
+    double time = 0; CPXXgetcallbackinfo(env, cbdata, wherefrom, CPX_CALLBACK_INFO_STARTTIME,   &time);
+    if((get_wall_time() - time)>= 7200){
+        TERMINATOR = 1;
+    }
+    
     // Get node data
 //    double nodeobjval = 0; CPXXgetcallbacknodeinfo(env, cbdata, wherefrom, 0, CPX_CALLBACK_INFO_NODE_OBJVAL, &nodeobjval);
     double bestinteger = 0; CPXXgetcallbackinfo(env, cbdata, wherefrom, CPX_CALLBACK_INFO_BEST_INTEGER,   &bestinteger);
@@ -5414,18 +5461,13 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     
     std::vector<double> x;
     std::vector<std::vector<double>> q;
+    // S->setVarUB(S->bestU, 0);
     int solstat = S->solve_KAdaptability(K, false, x, q);
     S->addwBounds(w);
     
 
-    // if given w_t is feasible for the inner problem, add optimality cut
-    if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
-        
-        if(x[0] < S->bestU){
-            S->setBestU(x[0]);
-            S->xsol=x;
-        }
-        
+    // if have collected scenario from the branch&bound tree, add subgradient cut
+    if(q.size()){
         // add subgradient cut
         if(!S->isWDetObjOnly()){
             double rhs_sg;
@@ -5438,6 +5480,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
 
             CPXXcutcallbackadd(env, cbdata, wherefrom, size + 1, rhs_sg, sense_sg, &rmatind_sg[0], &rmatval_sg[0], CPX_USECUT_FORCE);
             
+            std::cout << "Add subgradient cut\n\n";
             // subgradient cut is useful for subgradient cut
             assert(S->rhs_ws.size() == S->sense_ws.size());
             assert(S->rhs_ws.size() == S->rmatbeg_ws.size());
@@ -5448,7 +5491,15 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
             S->rmatind_ws.insert(S->rmatind_ws.end(), rmatind_sg.begin(), rmatind_sg.end());
             S->rmatval_ws.insert(S->rmatval_ws.end(), rmatval_sg.begin(), rmatval_sg.end());
         }
-        
+    }
+    // if given w_t is feasible for the inner problem, add optimality cut
+    if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS || solstat == CPXMIP_ABORT_FEAS){
+            
+        if(x[0] < S->bestU){
+            S->setBestU(x[0]);
+            S->xsolOut = x;
+        }
+            
         // add integer cut
         double coef = x[0] - L;
         
@@ -5496,57 +5547,78 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     
     // should be treated more carefully
     // if given w_t is infeasible for the inner problem, add feasibility cut
-    else if(solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD || solstat == CPXMIP_TIME_LIM_INFEAS){
-        
-        int sizeN = 0;
-        
-        std::vector<double> rmatval_feas;
-        std::vector<CPXDIM> rmatind_feas;
+    else if(solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD || solstat == CPXMIP_TIME_LIM_INFEAS || solstat == CPXMIP_ABORT_INFEAS){
+        if(solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD){
+            int sizeN = 0;
+            
+            std::vector<double> rmatval_feas;
+            std::vector<CPXDIM> rmatind_feas;
 
-        for(int i = 0; i < size; i++)
-        {
-            if(w[i] == 1){
-                rmatind_feas.emplace_back(i+1);
-                rmatval_feas.emplace_back(-1.0);
-                sizeN += 1;
+            for(int i = 0; i < size; i++)
+            {
+                if(w[i] == 1){
+                    rmatind_feas.emplace_back(i+1);
+                    rmatval_feas.emplace_back(-1.0);
+                    sizeN += 1;
+                }
             }
+            
+    //        std::vector<double> rmatval;
+    //        // coefficient for variable w
+    //        for(int i = 0; i < size; i++)
+    //        {
+    //            if(w[i] == 1){
+    //                rmatval.emplace_back(-1.0);
+    //                sizeN += 1;
+    //            }
+    //            else
+    //                rmatval.emplace_back(1.0);
+    //        }
+            
+            double rhs = 1 - sizeN;
+            
+            CPXXcutcallbackadd(env, cbdata, wherefrom, sizeN, rhs, sense, &rmatind_feas[0], &rmatval_feas[0], CPX_USECUT_FORCE);
+            
+            //CPXXcutcallbackadd(env, cbdata, wherefrom, size, rhs, sense, &rmatind[1], &rmatval[0], CPX_USECUT_FORCE);
+            
+            // feasibility cut is not always useful
+            assert(S->rhs_ws.size() == S->sense_ws.size());
+            assert(S->rhs_ws.size() == S->rmatbeg_ws.size());
+            S->rhs_ws.emplace_back(rhs);
+            S->sense_ws.emplace_back(sense);
+            assert(S->rmatind_ws.size() == S->rmatval_ws.size());
+            S->rmatbeg_ws.emplace_back(S->rmatind_ws.size());
+            S->rmatind_ws.insert(S->rmatind_ws.end(), rmatind_feas.begin(), rmatind_feas.end());
+            S->rmatval_ws.insert(S->rmatval_ws.end(), rmatval_feas.begin(), rmatval_feas.end());
+    //        S->rmatind_ws.insert(S->rmatind_ws.end(), rmatind.begin()+1, rmatind.end());
+    //        S->rmatval_ws.insert(S->rmatval_ws.end(), rmatval.begin(), rmatval.end());
+            
+            std::cout << "Add feasibility cut\n\n";
+            
+            *useraction_p = CPX_CALLBACK_SET;
         }
-        
-//        std::vector<double> rmatval;
-//        // coefficient for variable w
-//        for(int i = 0; i < size; i++)
-//        {
-//            if(w[i] == 1){
-//                rmatval.emplace_back(-1.0);
-//                sizeN += 1;
-//            }
-//            else
-//                rmatval.emplace_back(1.0);
-//        }
-        
-        double rhs = 1 - sizeN;
-        
-        CPXXcutcallbackadd(env, cbdata, wherefrom, sizeN, rhs, sense, &rmatind_feas[0], &rmatval_feas[0], CPX_USECUT_FORCE);
-        
-        //CPXXcutcallbackadd(env, cbdata, wherefrom, size, rhs, sense, &rmatind[1], &rmatval[0], CPX_USECUT_FORCE);
-        
-        // feasibility cut is not always useful
-        assert(S->rhs_ws.size() == S->sense_ws.size());
-        assert(S->rhs_ws.size() == S->rmatbeg_ws.size());
-        S->rhs_ws.emplace_back(rhs);
-        S->sense_ws.emplace_back(sense);
-        assert(S->rmatind_ws.size() == S->rmatval_ws.size());
-        S->rmatbeg_ws.emplace_back(S->rmatind_ws.size());
-        S->rmatind_ws.insert(S->rmatind_ws.end(), rmatind_feas.begin(), rmatind_feas.end());
-        S->rmatval_ws.insert(S->rmatval_ws.end(), rmatval_feas.begin(), rmatval_feas.end());
-//        S->rmatind_ws.insert(S->rmatind_ws.end(), rmatind.begin()+1, rmatind.end());
-//        S->rmatval_ws.insert(S->rmatval_ws.end(), rmatval.begin(), rmatval.end());
-        
-        std::cout << "Add feasibility cut\n\n";
-        
-        *useraction_p = CPX_CALLBACK_SET;
-    }
     
+        else{
+            int sizeN = 0;
+            
+            std::vector<double> rmatval;
+            // coefficient for variable w
+            for(int i = 0; i < size; i++)
+            {
+                if(w[i] == 1){
+                    rmatval.emplace_back(-1.0);
+                    sizeN += 1;
+                }
+                else
+                    rmatval.emplace_back(1.0);
+            }
+            
+            double rhs = 1 - sizeN;
+            
+            CPXXcutcallbackadd(env, cbdata, wherefrom, size, rhs, sense, &rmatind[1], &rmatval[0], CPX_USECUT_FORCE);
+            std::cout << "Add time limit or upper bound cut-off feasibility cut\n\n";
+        }
+    }
     else{
         std::cout << "Something wrong when evaluate phi(w_t), status code is: " << solstat << "\n";
         assert(false);

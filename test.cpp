@@ -25,7 +25,7 @@ int main (int argc, char** argv) {
     assert(argc == 4);
     
     const bool heuristic_mode = true;
-	const unsigned int Kmax = 4;
+	const unsigned int Kmax = 2;
 	KAdaptableInfo *pInfo;
         
 	try {
@@ -46,15 +46,38 @@ int main (int argc, char** argv) {
         std::string filePath(argv[2]);
         int seed(std::stod(std::string(argv[3])));
         
+//        gen_KNP(data, size, 0); //origianl seed is 1, old data seed is 5.
+//        knpInfo.setInstance(data);
+//        pInfo = knpInfo.clone();
+//
+//        // CALL THE SOLVER
+//        KAdaptableSolver S(*pInfo);
+//
+//        S.solve_L_Shaped2(1, true, std::cout);
+        
         // std::cout << size << ", " << filePath;
         // test DRO performance or get RO solution
         //for(int seed = 0; seed < 20; seed++){
+        seed = 0;
+        if(seed >= 0){
             gen_KNP(data, size, seed); //origianl seed is 1, old data seed is 5.
             knpInfo.setInstance(data);
             pInfo = knpInfo.clone();
 
             // CALL THE SOLVER
             KAdaptableSolver S(*pInfo);
+
+//
+//        std::vector<bool> w = {1,0,0,0,0};
+//        std::vector<double> x;
+//        std::vector<std::vector<double>> q;
+//        S.setW(w);
+//
+//        S.solve_KAdaptability(2, false, x, q);
+//        for (uint k = 1; k <= 2; k++){
+//            S.solve_L_Shaped2(k, true, std::cout);
+//            S.reset(*pInfo);
+//        }
             // std::ostream& out;
 //            CPXENVptr envCopy = NULL;
 //            CPXLPptr lpCopy = NULL;
@@ -88,47 +111,48 @@ int main (int argc, char** argv) {
             S.rmatbeg_ws.clear();
             S.rmatind_ws.clear();
             S.rmatval_ws.clear();
-            
+
             delete pInfo;
             pInfo = NULL;
-        //}
-        //test suboptimality of RO solution
-//        std::ofstream myfileOut;
-//        myfileOut.open(filePath + "KNP_sub_N=" + std::to_string(size) + ".csv", std::ofstream::out | std::ofstream::trunc);
-//        for(uint k = 1; k <= Kmax; k++){
-//            std::ifstream myfile(filePath + "KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
-//            int seed = 0;
-//            std::string line;
-//
-//            myfileOut << "k=" << std::to_string(k);
-//            while(getline(myfile, line)){
-//                std::string solstring;
-//                std::vector<double> data;
-//                std::vector<double> roSol;
-//                // read RO solution from the file
-//                std::stringstream ss(line);
-//                while(std::getline(ss, solstring, ',')){
-//                    data.push_back(std::stod(solstring));
-//                }
-//                seed = data[0]
-//                roSol = std::vector<double>(data.begin() + 1, data.end());
-//                gen_KNP(data, size, seed);
-//                knpInfo.setInstance(data);
-//                pInfo = knpInfo.clone();
-//
-//                // CALL THE SOLVER
-//                KAdaptableSolver S(*pInfo);
-//
-//                std::vector<double> x;
-//                std::vector<std::vector<double>> q;
-//                S.solve_KAdaptability(k, false, x, q, roSol);
-//
-//                myfileOut << "," << x[0];
-//            }
-//            myfileOut << "\n";
-//            myfile.close();
-//        }
-//        myfileOut.close();
+        }
+//        //test suboptimality of RO solution
+        else{
+            for(uint k = 1; k <= Kmax; k++){
+                std::ofstream myfileOut;
+                myfileOut.open(filePath + "KNP_sub_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
+
+                std::ifstream myfile(filePath + "KNP_RO_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv");
+                std::string line;
+
+                while(getline(myfile, line)){
+                    std::string solstring;
+                    std::vector<double> roData;
+                    std::vector<double> roSol;
+                    // read RO solution from the file
+                    std::stringstream ss(line);
+                    while(std::getline(ss, solstring, ',')){
+                        roData.push_back(std::stod(solstring));
+                    }
+                    seed = roData[0];
+                    myfileOut << seed << ",";
+                    roSol = std::vector<double>(roData.begin() + 1, roData.end());
+                    gen_KNP(data, size, seed);
+                    knpInfo.setInstance(data);
+                    pInfo = knpInfo.clone();
+
+                    // CALL THE SOLVER
+                    KAdaptableSolver S(*pInfo);
+
+                    std::vector<double> x;
+                    std::vector<std::vector<double>> q;
+                    S.solve_KAdaptability(k, false, x, q, roSol);
+
+                    myfileOut << x[0] << "\n";
+                }
+                myfile.close();
+                myfileOut.close();
+            }
+        }
 	}
 	catch (const int& e) {
 		std::cerr << "Program ABORTED: Error number " << e << "\n";
