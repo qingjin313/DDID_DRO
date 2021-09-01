@@ -69,7 +69,7 @@ const bool COLLECT_RESULTS       = 1;
 const bool BB_IMPLEMENT_LAZY_CON = 0;
 const bool BNC_BRANCH_ALL_CONSTR = 1;
 const bool BNC_DO_STRONG_BRANCH  = 0;
-const bool SEPARATE_FROM_SAMPLES = 0;
+const bool SEPARATE_FROM_SAMPLES = 1;
 const bool SEPARATE_ALTERNATE    = 0;
 const bool SEPARATE_ALTERNATE_AVG= 0;
 const int  BRANCHING_STRATEGY    = 1;
@@ -4166,6 +4166,8 @@ struct CPLEX_CB_node {
 	 * if objective uncertainty then always empty (for efficiency reasons), otherwise has size K
 	 */
 	std::vector<std::vector<int> > labels;
+    
+    std::vector<double> x;
 };
 
 //-----------------------------------------------------------------------------------
@@ -4299,7 +4301,9 @@ static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 	CPXDIM numcols = CPXXgetnumcols(env, lp);
 	std::vector<double> x(x_, x_ + numcols);
 	int label = 0;
-
+    
+    // CPXXwriteprob(env, nodelp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/inc", "LP");
+    
 	// Solution must be structurally feasible
 	// assert(S->feasible_DET_K(x, K, X_TEMP));
 	// assert(x == X_TEMP);
@@ -4348,6 +4352,9 @@ static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 
 	// Tag this node -- to be identified in branch CB
 	if (wherefrom == CPX_CALLBACK_MIP_INCUMBENT_NODESOLN) {
+//        for(auto xx: x)
+//            std::cout << xx << ", ";
+//        std::cout << std::endl;
 		#ifndef NDEBUG
 		CPXLONG depth = 0; CPXXgetcallbacknodeinfo(env, cbdata, wherefrom, 0, CPX_CALLBACK_INFO_NODE_DEPTH_LONG, &depth);
 		#endif
@@ -4362,6 +4369,7 @@ static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 		newInfo->br_label = (*isfeas_p ? -1 : label);
 		newInfo->nodeObjective = objval;
 		newInfo->numNodes = 0;
+        newInfo->x = x;
 		newInfo->numActivePolicies = (S->heuristic_mode ? K : 1);
 		if (S->hasObjectiveUncOnly() && !DECISION_DEPENDENT) {
 			newInfo->labels.clear();
@@ -4470,8 +4478,8 @@ static int CPXPUBLIC branchCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, v
 	CPXCLPptr lp = NULL; CPXXgetcallbacklp(env, cbdata, wherefrom, &lp);
 	CPXDIM numcols = CPXXgetnumcols(env, lp);
 	std::vector<double> x(numcols); CPXXgetcallbacknodex(env, cbdata, wherefrom, &x[0], 0, numcols - 1);
-
-
+//    CPXLPptr nodelp = NULL; CPXXgetcallbacknodelp(env, cbdata, wherefrom, &nodelp);
+//    CPXXwriteprob(env, nodelp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/node", "LP");
 
 	///////////////////////////////////////////////////////////////////////////
 	// NOTE -- I AM ASSUMING THAT ALL CONSTRAINTS (X,Q) HAVE BEEN DUALIZED!! //
@@ -4520,13 +4528,12 @@ static int CPXPUBLIC branchCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, v
 		assert(oldInfo->numActivePolicies <= K);
 		assert(oldInfo->labels.size() == ((S->hasObjectiveUncOnly()&& !DECISION_DEPENDENT) ? 0 : K));
 
-
-
+        if (oldInfo->fromIncumbentCB)
+            x = oldInfo->x;
 		// if the incumbent CB rejected the solution and
 		// if the label suggested does not actually violate x
 		// then re-compute a new label
 		if (oldInfo->fromIncumbentCB && oldInfo->br_label >= 0) {
-
 			// check for infeasibility with this label or re-compute
 			std::vector<std::vector<double> > qcheck{S->bb_samples.at(oldInfo->br_label)};
 			compute_separation = S->feasible_YQ(x, K, qcheck, LABEL_TEMP);
@@ -4559,6 +4566,10 @@ static int CPXPUBLIC branchCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, v
 	/////////////////////////////////////////////
 	if (compute_separation) {
 		if (S->solve_separationProblem(x, K, label, possible_branching)) {
+//            std::cout << "check: ";
+//            for(auto xx: x)
+//                std::cout << xx << ", ";
+//            std::cout << std::endl;
             //std::cout << "Find violated scenario:" << label << std::endl;
 			assert(label);
 		}

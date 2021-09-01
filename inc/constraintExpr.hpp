@@ -1032,7 +1032,7 @@ public:
                 if (stat) {std::cerr << "Failed to add constraint to CPLEX inside evaluation of K-adaptable expression. \n"; exit(-1);}
                 
 			}
-            CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/bbunc", "LP");
+            // CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/bbunc", "LP");
 			/* Solve LP */
 			stat = CPXXlpopt(env, lp);
 			if (stat) std::cerr << "Could not solve LP inside evaluation of K-adaptable expression.\n";
