@@ -69,7 +69,7 @@ const bool COLLECT_RESULTS       = 1;
 const bool BB_IMPLEMENT_LAZY_CON = 0;
 const bool BNC_BRANCH_ALL_CONSTR = 1;
 const bool BNC_DO_STRONG_BRANCH  = 0;
-const bool SEPARATE_FROM_SAMPLES = 1;
+const bool SEPARATE_FROM_SAMPLES = 0;
 const bool SEPARATE_ALTERNATE    = 0;
 const bool SEPARATE_ALTERNATE_AVG= 0;
 const int  BRANCHING_STRATEGY    = 1;
@@ -3688,7 +3688,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 //	}
 
 	// Re-compute qtemp for heuristic
-	if (heuristic_mode && K > 1) getWorstCase(xfix, K - 1, qtemp);
+	// if (heuristic_mode && K > 1) getWorstCase(xfix, K - 1, qtemp);
 
 	// Generate initial scenario
 	bb_samples.assign(1, qtemp);
@@ -3708,7 +3708,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
     
 	// set options
 	setCPXoptions(env);
-	CPXXsetintparam(env, CPXPARAM_ScreenOutput, CPX_ON);
+	CPXXsetintparam(env, CPXPARAM_ScreenOutput, CPX_OFF);
 	CPXXchgprobtype(env, lp, CPXPROB_MILP); // to use callbacks
 	CPXXchgobjsen(env, lp, CPX_MIN);
 
@@ -4325,7 +4325,7 @@ static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 			assert(static_cast<CPLEX_CB_node*>(nodeData)->numNodes > 1);
 			assert(static_cast<CPLEX_CB_node*>(nodeData)->numNodes < K);
 			assert(!static_cast<CPLEX_CB_node*>(nodeData)->fromIncumbentCB);
-			//assert(!S->feasible_YQ(x, K, Q_TEMP));
+			assert(!S->feasible_YQ(x, K, Q_TEMP));
 			*isfeas_p = 0;
 			exitCallback(inc);
 		}
