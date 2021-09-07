@@ -16,7 +16,7 @@ void KAdaptableInfo_PE::makeUncSet() {
     
     // define uncertain risk factors
     for (unsigned int f = 1; f < data.phi[0].size(); ++f) {
-        U.addParam(0, -1, 1);
+        U.addParam(0, 0, 1);
     }
     
     // get the normalized parameter
@@ -127,6 +127,9 @@ void KAdaptableInfo_PE::makeUncSet() {
         }
     }
     
+//    int stat;
+//    CPXXwriteprob(U.getENVObject(), U.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK_before", "LP");
+    
     numFirstStage += numAmbCstr;
 }
 
@@ -184,7 +187,7 @@ void KAdaptableInfo_PE::makeConsX() {
         temp.addTermX(getVarIndex_1("w", i), 1);
     }
     temp.rowname("BUDGET");
-    temp.sign('L');
+    temp.sign('E');
     temp.RHS(data.Q);
     C_X.emplace_back(temp);
     

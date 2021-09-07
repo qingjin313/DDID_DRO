@@ -16,6 +16,7 @@
 #include "problemInfo_psp.hpp"
 #include "problemInfo_test1.hpp"
 #include "problemInfo_knp_dd.hpp"
+#include "problemInfo_bb.hpp"
 #include "problemInfo_pe.hpp"
 #include "robustSolver.hpp"
 #include <regex>
@@ -25,30 +26,41 @@ int main (int argc, char** argv) {
     assert(argc == 4);
     
     const bool heuristic_mode = true;
-	const unsigned int Kmax = 2;
+	const unsigned int Kmax = 3;
 	KAdaptableInfo *pInfo;
         
 	try {
         
-        PE data;
-        KAdaptableInfo_PE peInfo;
+        KNP data;
+        KAdaptableInfo_KNP_DD knpInfo;
         int size = 5;
 
-        gen_PE(data, size, 0); // set to 'true' to allow option of loans, origianl seed is 1, old data seed is 0.
-        peInfo.setInstance(data);
-        pInfo = peInfo.clone();
+        gen_KNP(data, size, 0); // set to 'true' to allow option of loans, origional seed is 1, old data seed is 0.
+        knpInfo.setInstance(data);
+        pInfo = knpInfo.clone();
         
         KAdaptableSolver S(*pInfo);
+        
+        for(auto x : pInfo->getConstraintsX())
+            x.print();
+        for(auto xy : pInfo->getConstraintsXY()[0])
+            xy.print();
+        for(auto xq : pInfo->getConstraintsXQ())
+            xq.print();
+        for(auto xyq : pInfo->getConstraintsXYQ()[0])
+            xyq.print();
 
-//        std::vector<bool> w = {1,0,0,1,0};
+//        std::vector<bool> w = {1,0,0,0,1,1,1,0,0,1};
 //        std::vector<double> x;
 //        std::vector<std::vector<double>> q;
 //        S.setW(w);
 //
 //        S.setBestU(+CPX_INFBOUND);
 //        S.solve_KAdaptability(2, false, x, q);
-        for (uint k = 1; k <= Kmax; k++)
+        for (uint k = 1; k <= Kmax; k++){
             S.solve_L_Shaped2(k, true, std::cout);
+            S.reset(*pInfo);
+        }
         
 		// Generate the instance data
 //		KNP data;

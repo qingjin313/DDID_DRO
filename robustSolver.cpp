@@ -84,6 +84,8 @@ const double BNC_GAP_VALUE = 10;
 //MARK: Qing: whether to do the decision dependent or not
 const bool DECISION_DEPENDENT = 1;
 const bool SOLVE_RLP_FIRST = 0; // In inner loop, whether to solve the lp relaxation of the RMIP first
+const bool USE_INFORM_CUT = 0;
+const bool USE_STRE_FEAS_CUT = 1;
 
 //-----------------------------------------------------------------------------------
 
@@ -2623,8 +2625,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
     std::vector<double> xTemp;
     solve_DET(pInfo->getNominal(), xTemp);
     setL(xTemp[0]);
-    if(K==1 || !h)
-        setBestU(+CPX_INFBOUND);
+    setBestU(+CPX_INFBOUND);
     addVariable(env, lp, 'C', L, +CPX_INFBOUND, 1.0, "theta");
     
     // add w variables, index begin from 1
@@ -3047,8 +3048,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     solve_DET(pInfo->getNominal(), xTemp);
     setL(xTemp[0]);
     // int size = getTrueWSize();
-    if(K==1 || !h)
-        setBestU(+CPX_INFBOUND);
+    setBestU(+CPX_INFBOUND);
     t = 0;
     // checkRep = false;
     
@@ -3056,7 +3056,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     
     // add w variables, index begin from 1
     auto& X   = pInfo->getVarsX();
-    // std::vector<double> CoefW = pInfo->getCoefW();
+    std::vector<double> CoefW = pInfo->getCoefW();
     int begin = X.getFirstOfVarType("w");
     for (int i = 0; i < X.getVarTypeSize("w"); i++) if (!X.isUndefVar(i + begin)) {
         std::string cname;
@@ -3071,7 +3071,8 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
             if (ind5 > -1) cname += "," + std::to_string(ind5);
             cname += ")";
         }
-        // addVariable(env, lp, 'B', 0.0, 1.0, CoefW[i], cname);
+        if(std::abs(CoefW[i]) >= EPS_INFEASIBILITY_X)
+            addVariable(env, lp, 'B', 0.0, 1.0, CoefW[i], cname);
         addVariable(env, lp, 'B', 0.0, 1.0, 0.0, cname);
     }
     // Set feasible region for w
@@ -3872,7 +3873,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 //        for(auto l : final_labels[k])
 //            q[k].insert(q[k].end(), bb_samples_all[l].begin(), bb_samples_all[l].end());
 //    }
-    if(!roSol.size())
+    if(!roSol.size() && bb_samples_all.size())
         if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
         
         unsigned int totalSamples = 0;
@@ -5534,7 +5535,8 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
         CPXXcutcallbackadd(env, cbdata, wherefrom, size + 1, rhs, sense, &rmatind[0], &rmatval[0], CPX_USECUT_FORCE);
         
         // add deterministic part of w(cost term) to the objective function will help, add warm start of |w|_1 = Q will help
-        if(S->isWDetObjOnly()){
+        // if(S->isWDetObjOnly()){
+        if(USE_INFORM_CUT){
             double rhs_inf(x[0]);
             std::vector<CPXDIM> rmatind_inf;
             std::vector<double> rmatval_inf;
@@ -5559,7 +5561,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     // should be treated more carefully
     // if given w_t is infeasible for the inner problem, add feasibility cut
     else if(solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD || solstat == CPXMIP_TIME_LIM_INFEAS || solstat == CPXMIP_ABORT_INFEAS){
-        if(solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD){
+        if(USE_STRE_FEAS_CUT && (solstat == CPXMIP_INFEASIBLE || solstat == CPXMIP_INForUNBD)){
             int sizeN = 0;
             
             std::vector<double> rmatval_feas;

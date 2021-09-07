@@ -67,7 +67,7 @@ static inline void gen_PE(PE& data, unsigned int n, int seed = 1) {
 
 	// seed for re-producibility
 	std::default_random_engine gen (1111 + seed);
-	std::uniform_real_distribution<double> interval_1 (0.0, 1.0);
+	std::uniform_real_distribution<double> interval_1 (-1.0, 1.0);
 
 	// # of items
 	data.N = n;
@@ -75,35 +75,11 @@ static inline void gen_PE(PE& data, unsigned int n, int seed = 1) {
     
     data.phi.resize(n);
     for (n = 0; (int)n < data.N; n++) {
-        // generate F-1 numbers between 0 and 1
-        std::array<double, PE_NFETURES - 1> xn;
-        for (size_t f = 0; f < xn.size(); f++) {
-            xn[f] = interval_1(gen);
-        }
-
-        // sort these numbers
-        std::sort(xn.begin(), xn.end());
-
-        // generate F numbers such that their sum = 1
-        data.phi[n][0] = 1.0;
-        data.phi[n][1] = xn[0];
-        for (size_t f = 2; f < PE_NFETURES; f++) {
-            data.phi[n][f] = xn[f-1] - xn[f-2];
-        }
-        data.phi[n][PE_NFETURES] = 1 - xn[PE_NFETURES-2];
-
-        // randomize in order to eliminate bias
-        std::mt19937 g(static_cast<uint32_t>(1));
-        std::shuffle(data.phi[n].begin() + 1, data.phi[n].end(), g);
-
-        // check (just to be safe)
-        #ifndef NDEBUG
-        double check_phi = 0.0;
+        // generate F numbers between -1 and 1
         for (size_t f = 1; f <= PE_NFETURES; f++) {
-            check_phi += data.phi[n][f];
+            data.phi[n][f] = interval_1(gen);
+            data.phi[n][0] += std::abs(data.phi[n][f]);
         }
-        assert(std::abs(1 - check_phi) <= 1.E-12);
-        #endif
     }
     
     data.gamma.first = USE_GAMMA;

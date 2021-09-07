@@ -102,7 +102,7 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
             // bounds for single derivation to the single nominal profit
             for(int i = 0; i<= data.N-1; i++){
                 // U.addParam(0, 0, profit_high[i]);
-                U.addParam(0, 0, 4);
+                U.addParam(0, 0, data.profit[i]*0.5);
                 numAmbCstr += 1;
             }
             
@@ -110,7 +110,7 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
                 // bounds for single derivation to the single nominal cost
                 for(int i = 0; i<= data.N-1; i++){
                     // U.addParam(0, 0, cost_high[i]);
-                    U.addParam(0, 0, 25);
+                    U.addParam(0, 0, data.cost[i]*0.5);
                     numAmbCstr += 1;
                 }
             }
@@ -151,7 +151,7 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
 
             cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N + 1, 1.0));
             cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*data.N + 1, 1.0));
-            for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0){
+            for (int i = 0; i <= data.N-1; ++i) if (data.cost[i] != 0.0){
                 nominalTotal += data.cost[i];
                 cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
                 cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, 1.0));
@@ -178,17 +178,16 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
                     cstr_pos.clear();
                     cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
                     cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
-                    U.addFacet(cstr_pos, 'G', -data.profit[i]);
+                    U.addFacet(cstr_pos, 'G', -data.cost[i]);
 
                     cstr_neg.clear();
                     cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
                     cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, 1.0));
-                    U.addFacet(cstr_neg, 'G', data.profit[i]);
+                    U.addFacet(cstr_neg, 'G', data.cost[i]);
                 }
             }
         }
     }
-    
     
     numFirstStage += numAmbCstr;
 }
@@ -323,7 +322,7 @@ void KAdaptableInfo_KNP_DD::makeConsY(unsigned int l) {
         // deterministic cost constraint
         if(!CSTR_UNC){
             temp.clear();
-            for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+            for (int i = 0; i <= data.N-1; ++i) if (data.cost[i] != 0.0) {
                 temp.rowname("BUDGET(" + std::to_string(k) + ")");
                 temp.sign('L');
                 temp.RHS(data.B);
@@ -353,10 +352,10 @@ void KAdaptableInfo_KNP_DD::makeConsY(unsigned int l) {
 		temp.sign('G');
 		temp.RHS(0);
 		temp.addTermX(getVarIndex_1("O", 0), 1);
-		for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+		for (int i = 0; i <= data.N-1; ++i){
             temp.addTermProduct(getVarIndex_1("w", i), data.phi[0].size() + i, 1.0);
             // temp.addTermX(getVarIndex_1("w", i), -data.profit[i]);
-            C_W[i] = -data.profit[i];
+            // C_W[i] = -data.profit[i];
             temp.addTermProduct(getVarIndex_2(k, "y", i), data.phi[0].size() + i, data.theta);
             nomProfit += data.profit[i];
             nomCost += data.cost[i];
@@ -373,15 +372,15 @@ void KAdaptableInfo_KNP_DD::makeConsY(unsigned int l) {
             if(USE_SINGLE){
                 for (int i = 0; i <= data.N-1; ++i)
                 {
-                    temp.addTermProduct(getVarIndex_1("psi", i + 1), data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0);
-                    temp.addTermX(getVarIndex_1("psi", i + 1), -0.15*data.profit[i]);
+                    temp.addTermProduct(getVarIndex_1("psi", i + 1 + CSTR_UNC), data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0);
+                    temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC), -0.15*data.profit[i]);
                 }
                 
                 if(CSTR_UNC){
                     for (int i = 0; i <= data.N-1; ++i)
                     {
-                        temp.addTermProduct(getVarIndex_1("psi", i + 1 + data.N), data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0);
-                        temp.addTermX(getVarIndex_1("psi", i + 1 + data.N), -0.15*data.profit[i]);
+                        temp.addTermProduct(getVarIndex_1("psi", i + 1 + CSTR_UNC + data.N), data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0);
+                        temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC + data.N), -0.15*data.cost[i]);
                     }
                 }
             }
@@ -397,7 +396,7 @@ void KAdaptableInfo_KNP_DD::makeConsY(unsigned int l) {
             temp.rowname("BUDGET(" + std::to_string(k) + ")");
             temp.sign('L');
             temp.RHS(data.B);
-            for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+            for (int i = 0; i <= data.N-1; ++i){
                 temp.addTermProduct(getVarIndex_1("w", i), data.phi[0].size() + + data.N + i, 1.0);
                 temp.addTermProduct(getVarIndex_2(k, "y", i), data.phi[0].size() + + data.N + i, 1.0);
             }
