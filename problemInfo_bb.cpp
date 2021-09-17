@@ -8,7 +8,7 @@
 #include "problemInfo_bb.hpp"
 #include <cassert>
 
-#define CSTR_UNC 0
+#define CSTR_UNC 1
 #define USE_SINGLE 0
 #define USE_DRO 1
 //-----------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ void KAdaptableInfo_BB::makeUncSet() {
             // bounds for single derivation to the single nominal profit
             for(int i = 0; i<= data.N-1; i++){
                 // U.addParam(0, 0, profit_high[i]);
-                U.addParam(0, 0, 4);
+                U.addParam(0, 0, 2*data.profit[i]);
                 numAmbCstr += 1;
             }
             
@@ -104,7 +104,7 @@ void KAdaptableInfo_BB::makeUncSet() {
                 // bounds for single derivation to the single nominal cost
                 for(int i = 0; i<= data.N-1; i++){
                     // U.addParam(0, 0, cost_high[i]);
-                    U.addParam(0, 0, 25);
+                    U.addParam(0, 0, 2*data.cost[i]);
                     numAmbCstr += 1;
                 }
             }
@@ -183,6 +183,9 @@ void KAdaptableInfo_BB::makeUncSet() {
         }
     }
     numFirstStage += numAmbCstr;
+    
+//    int stat;
+//    CPXXwriteprob(U.getENVObject(), U.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK_before", "LP");
 }
 
 //-----------------------------------------------------------------------------------
@@ -259,10 +262,11 @@ void KAdaptableInfo_BB::makeConsX() {
     // C_XQ //
     //////////
     C_XQ.clear();
-    // budget
+    // All the XQ constraint should be dualized before adding into the problem, or it may cause error
+    // In this problem, this constraint only involve w, so we add it into the problem through the function robustifyW in the outerloop
     if(CSTR_UNC){
         temp.clear();
-        temp.rowname("BUDGET)");
+        temp.rowname("BUDGET");
         temp.sign('L');
         temp.RHS(data.B);
         for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
@@ -359,7 +363,7 @@ void KAdaptableInfo_BB::makeConsY(unsigned int l) {
         temp.clear();
         temp.rowname("OBJ_CONSTRAINT(" + std::to_string(k) + ")");
         temp.sign('G');
-        temp.RHS(0);
+        temp.RHS(0.0);
         temp.addTermX(getVarIndex_1("O", 0), 1);
         for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
             temp.addTermProduct(getVarIndex_2(k, "y", i), data.phi[0].size() + i);
@@ -368,25 +372,25 @@ void KAdaptableInfo_BB::makeConsY(unsigned int l) {
         }
         if(USE_DRO){
             temp.addTermProduct(getVarIndex_1("psi", 0), data.phi[0].size() + (1+CSTR_UNC)*data.N, 1.0);
-            temp.addTermX(getVarIndex_1("psi", 0), -0.15*nomProfit/sqrt(data.N));
+            temp.addTermX(getVarIndex_1("psi", 0), -0.25*nomProfit/sqrt(data.N));
             
             if(CSTR_UNC){
                 temp.addTermProduct(getVarIndex_1("psi", 1), data.phi[0].size() + (1+CSTR_UNC)*data.N + 1, 1.0);
-                temp.addTermX(getVarIndex_1("psi", 1), -0.15*nomCost/sqrt(data.N));
+                temp.addTermX(getVarIndex_1("psi", 1), -0.25*nomCost/sqrt(data.N));
             }
             
             if(USE_SINGLE){
                 for (int i = 0; i <= data.N-1; ++i)
                 {
                     temp.addTermProduct(getVarIndex_1("psi", i + 1 + CSTR_UNC), data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0);
-                    temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC), -0.15*data.profit[i]);
+                    temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC), -0.25*data.profit[i]);
                 }
                 
                 if(CSTR_UNC){
                     for (int i = 0; i <= data.N-1; ++i)
                     {
                         temp.addTermProduct(getVarIndex_1("psi", i + 1 + CSTR_UNC + data.N), data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0);
-                        temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC + data.N), -0.15*data.cost[i]);
+                        temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC + data.N), -0.25*data.cost[i]);
                     }
                 }
             }

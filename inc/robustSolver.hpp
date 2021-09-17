@@ -270,6 +270,13 @@ public:
      */
     void feasibleW(CPXENVptr env, CPXLPptr lp) const;
 
+    /**
+     * Add the robustified w function
+     * @param env   environment of the outer loop l-shaped algorithm
+     * @param lp    linear problem of the out loop l-shaped algorithm
+     */
+    void robustifyW(CPXENVptr env, CPXLPptr lp) const;
+    
 public:
 	
 	/**
@@ -603,13 +610,13 @@ public:
     
     inline void setL(double lb) {L = lb;}
     inline void setBestU(double ub) {bestU = ub;}
-    inline void addwBounds(std::vector<bool> wSols){
+    inline void addwBounds(const std::vector<bool>& wSols){
         std::string newW;
         for(auto w : wSols)
             newW += (w? "1" : "0");
         wBounds.emplace_back(newW);
     }
-    inline bool checkW(std::vector<bool> wSols){
+    inline bool checkW(const std::vector<bool>& wSols){
         std::string newW;
         for(auto w : wSols)
             newW += (w? "1" : "0");

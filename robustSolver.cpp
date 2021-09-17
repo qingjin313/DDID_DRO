@@ -84,8 +84,8 @@ const double BNC_GAP_VALUE = 10;
 //MARK: Qing: whether to do the decision dependent or not
 const bool DECISION_DEPENDENT = 1;
 const bool SOLVE_RLP_FIRST = 0; // In inner loop, whether to solve the lp relaxation of the RMIP first
-const bool USE_INFORM_CUT = 0;
-const bool USE_STRE_FEAS_CUT = 1;
+const bool USE_INFORM_CUT = 1;
+const bool USE_STRE_FEAS_CUT = 0;
 
 //-----------------------------------------------------------------------------------
 
@@ -846,6 +846,27 @@ void KAdaptableSolver::getRobustYQ_fixedQ(const std::vector<double>& q, CPXDIM& 
     
     pInfo->resetXiBar();
     return;
+}
+
+void KAdaptableSolver::robustifyW(CPXENVptr env, CPXLPptr lp) const
+{
+    auto& X   = pInfo->getVarsX();
+    auto& C_XQ = pInfo->getConstraintsXQ();
+    
+    int beginW(X.getVarLinIndex("w", 0));
+    int endW( beginW + X.getDefVarTypeSize("w") );
+    
+    std::vector<int> indices;
+    for (const auto& con: C_XQ){
+        indices = con.getVarIndices();
+        unsigned long i = 0;
+        for(; i < indices.size(); i++){
+            if(indices[i] >= endW || indices[i] < beginW)
+                break;
+        }
+        if(i >= indices.size())
+            con.addToCplex(env, lp, &pInfo->getUncSet(), true);
+    }
 }
 
 void KAdaptableSolver::feasibleW(CPXENVptr env, CPXLPptr lp) const
@@ -2650,6 +2671,7 @@ int KAdaptableSolver::solve_L_Shaped(const unsigned int K, const bool h, std::os
     }
     // Set feasible region for w
     feasibleW(env, lp);
+    robustifyW(env, lp);
     if(h && rmatbeg_ws.size()){
         assert(rmatbeg_ws.size() == rhs_ws.size());
         assert(sense_ws.size() == rhs_ws.size());
@@ -3054,6 +3076,8 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     
     addVariable(env, lp, 'C', L, +CPX_INFBOUND, 1.0, "theta");
     
+    pInfo->isConsistentWithDesign();
+    
     // add w variables, index begin from 1
     auto& X   = pInfo->getVarsX();
     std::vector<double> CoefW = pInfo->getCoefW();
@@ -3076,7 +3100,12 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
         addVariable(env, lp, 'B', 0.0, 1.0, 0.0, cname);
     }
     // Set feasible region for w
-    feasibleW(env, lp);
+    // feasibleW(env, lp);
+    // Robustify w
+    robustifyW(env, lp);
+    
+    // CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK", "LP");
+    
     if(h && rmatbeg_ws.size()){
         assert(rmatbeg_ws.size() == rhs_ws.size());
         assert(sense_ws.size() == rhs_ws.size());
@@ -3873,7 +3902,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 //        for(auto l : final_labels[k])
 //            q[k].insert(q[k].end(), bb_samples_all[l].begin(), bb_samples_all[l].end());
 //    }
-    if(!roSol.size() && bb_samples_all.size())
+    if(!roSol.size() && bb_samples_all.size() && final_labels.size())
         if(solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL || solstat == CPXMIP_TIME_LIM_FEAS){
         
         unsigned int totalSamples = 0;
@@ -4330,7 +4359,7 @@ static int CPXPUBLIC incCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 			assert(static_cast<CPLEX_CB_node*>(nodeData)->numNodes > 1);
 			assert(static_cast<CPLEX_CB_node*>(nodeData)->numNodes < K);
 			assert(!static_cast<CPLEX_CB_node*>(nodeData)->fromIncumbentCB);
-			assert(!S->feasible_YQ(x, K, Q_TEMP));
+			// assert(!S->feasible_YQ(x, K, Q_TEMP));
 			*isfeas_p = 0;
 			exitCallback(inc);
 		}
@@ -5435,8 +5464,8 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     
     // Get node solution
     CPXCLPptr lp = NULL; CPXXgetcallbacklp(env, cbdata, wherefrom, &lp);
-    CPXDIM numcols = CPXXgetnumcols(env, lp);
-    std::vector<double> rawW(numcols); CPXXgetcallbacknodex(env, cbdata, wherefrom, &rawW[0], 0, numcols-1);
+    // CPXDIM numcols = CPXXgetnumcols(env, lp);
+    std::vector<double> rawW(size); CPXXgetcallbacknodex(env, cbdata, wherefrom, &rawW[0], 1, size);
     
     // std::cout << nodeobjval << "\n";
     std::cout << "The node obj is: " << objval << "\n";
@@ -5447,7 +5476,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     
     std::vector<bool> w;
     w.resize(size);
-    std::transform(rawW.begin()+1, rawW.end(), w.begin(), [](double x) { return abs(x) > 1.E-5;});
+    std::transform(rawW.begin(), rawW.end(), w.begin(), [](double x) { return abs(x) > 1.E-5;});
     
     // variables for adding cut
     char sense = 'G';

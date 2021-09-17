@@ -111,7 +111,7 @@ static inline void gen_BB(BB& data, unsigned int n, int seed = 1) {
     }
     
 	// set solution file name
-	data.solfilename = "cpb-n" + std::to_string(data.N) + "-s" + std::to_string(seed) + "-t" + ".opt";
+	data.solfilename = "bb-n" + std::to_string(data.N) + "-s" + std::to_string(seed) + "-t" + ".opt";
 }
 #undef KNP_NFACTORS
 #endif

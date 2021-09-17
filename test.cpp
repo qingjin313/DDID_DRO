@@ -26,41 +26,44 @@ int main (int argc, char** argv) {
     assert(argc == 4);
     
     const bool heuristic_mode = true;
-	const unsigned int Kmax = 3;
+	const unsigned int Kmax = 2;
 	KAdaptableInfo *pInfo;
         
 	try {
         
-        KNP data;
-        KAdaptableInfo_KNP_DD knpInfo;
-        int size = 5;
+        BB data;
+        KAdaptableInfo_BB bbInfo;
+        int size = 10;
 
-        gen_KNP(data, size, 0); // set to 'true' to allow option of loans, origional seed is 1, old data seed is 0.
-        knpInfo.setInstance(data);
-        pInfo = knpInfo.clone();
-        
+        gen_BB(data, size, 0); // set to 'true' to allow option of loans, origional seed is 1, old data seed is 0.
+        bbInfo.setInstance(data);
+        pInfo = bbInfo.clone();
+
         KAdaptableSolver S(*pInfo);
         
-        for(auto x : pInfo->getConstraintsX())
-            x.print();
-        for(auto xy : pInfo->getConstraintsXY()[0])
-            xy.print();
-        for(auto xq : pInfo->getConstraintsXQ())
-            xq.print();
-        for(auto xyq : pInfo->getConstraintsXYQ()[0])
-            xyq.print();
-
-//        std::vector<bool> w = {1,0,0,0,1,1,1,0,0,1};
+//        std::vector<bool> w = {0,0,0,0,0,0,1,0,0,1};
 //        std::vector<double> x;
 //        std::vector<std::vector<double>> q;
 //        S.setW(w);
 //
 //        S.setBestU(+CPX_INFBOUND);
-//        S.solve_KAdaptability(2, false, x, q);
+//        S.solve_KAdaptability(1, false, x, q);
         for (uint k = 1; k <= Kmax; k++){
             S.solve_L_Shaped2(k, true, std::cout);
             S.reset(*pInfo);
         }
+//
+//        std::vector<bool> w = {0,0,0,0,1,0,1,0,0,1};
+//        std::vector<double> x;
+//        std::vector<std::vector<double>> q;
+//        S.setW(w);
+////
+////        S.setBestU(+CPX_INFBOUND);
+//        S.solve_KAdaptability(3, false, x, q);
+//        for (uint k = 1; k <= Kmax; k++){
+//            S.solve_L_Shaped2(k, true, std::cout);
+//            S.reset(*pInfo);
+//        }
         
 		// Generate the instance data
 //		KNP data;
@@ -79,9 +82,8 @@ int main (int argc, char** argv) {
 ////        S.solve_L_Shaped2(1, true, std::cout);
 //
 //        // std::cout << size << ", " << filePath;
-//        // test DRO performance or get RO solution
-//        //for(int seed = 0; seed < 20; seed++){
-//        seed = 0;
+        // test DRO performance or get RO solution
+        //for(int seed = 0; seed < 20; seed++){
 //        if(seed >= 0){
 //            gen_KNP(data, size, seed); //origianl seed is 1, old data seed is 5.
 //            knpInfo.setInstance(data);
@@ -90,17 +92,6 @@ int main (int argc, char** argv) {
 //            // CALL THE SOLVER
 //            KAdaptableSolver S(*pInfo);
 //
-////
-////        std::vector<bool> w = {1,0,0,0,0};
-////        std::vector<double> x;
-////        std::vector<std::vector<double>> q;
-////        S.setW(w);
-////
-////        S.solve_KAdaptability(2, false, x, q);
-////        for (uint k = 1; k <= 2; k++){
-////            S.solve_L_Shaped2(k, true, std::cout);
-////            S.reset(*pInfo);
-////        }
 //            for (uint k = 1; k <= Kmax; k++){
 //                std::ofstream myfile;
 //                if(pInfo->getVarsX().getDefVarTypeSize("psi"))
@@ -132,9 +123,9 @@ int main (int argc, char** argv) {
 //            delete pInfo;
 //            pInfo = NULL;
 //        }
-//        //test suboptimality of RO solution
+        //test suboptimality of RO solution
 //        else{
-//            for(uint k = 1; k <= Kmax; k++){
+//            for(uint k = 3; k <= Kmax; k++){
 //                std::ofstream myfileOut;
 //                myfileOut.open(filePath + "KNP_sub_N=" + std::to_string(size) + "_K=" + std::to_string(k) + ".csv", std::ios_base::app);
 //
@@ -151,20 +142,40 @@ int main (int argc, char** argv) {
 //                        roData.push_back(std::stod(solstring));
 //                    }
 //                    seed = roData[0];
-//                    myfileOut << seed << ",";
+//                    // myfileOut << seed << ",";
 //                    roSol = std::vector<double>(roData.begin() + 1, roData.end());
 //                    gen_KNP(data, size, seed);
 //                    knpInfo.setInstance(data);
 //                    pInfo = knpInfo.clone();
+//                    int numW = pInfo->getVarsX().getDefVarTypeSize("w");
+//                    int numX = pInfo->getVarsX().getDefVarTypeSize("x");
+//                    int numY = pInfo->getVarsY().getDefVarTypeSize("y");
 //
 //                    // CALL THE SOLVER
 //                    KAdaptableSolver S(*pInfo);
 //
 //                    std::vector<double> x;
 //                    std::vector<std::vector<double>> q;
-//                    S.solve_KAdaptability(k, false, x, q, roSol);
 //
-//                    myfileOut << x[0] << "\n";
+//                    for(uint ki = 0; ki < k; ki++){
+//                        x.clear();
+//                        q.clear();
+//                        std::vector<double> roSolNew;
+//                        roSolNew = std::vector<double>(roSol.begin(), roSol.begin() + numW + numX);
+//                        roSolNew.insert(roSolNew.end(), roSol.begin() + numW + numX + ki*numY, roSol.end());
+//                        if(ki)
+//                            roSolNew.insert(roSolNew.end(), roSol.begin() + numW + numX, roSol.begin() + numW + numX + ki*numY);
+//                        S.solve_KAdaptability(k, false, x, q, roSolNew);
+//                        if(ki < (k - 1)){
+//                            myfileOut << x[0] << ",";
+//                            S.reset(*pInfo);
+//                        }
+//                        else{
+//                            myfileOut << x[0];
+//                            delete pInfo;
+//                            pInfo = NULL;
+//                        }
+//                    }
 //                }
 //                myfile.close();
 //                myfileOut.close();
