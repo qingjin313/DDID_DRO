@@ -852,11 +852,23 @@ void KAdaptableSolver::robustifyW(CPXENVptr env, CPXLPptr lp) const
 {
     auto& X   = pInfo->getVarsX();
     auto& C_XQ = pInfo->getConstraintsXQ();
+    auto& C_X = pInfo->getConstraintsX();
     
     int beginW(X.getVarLinIndex("w", 0));
     int endW( beginW + X.getDefVarTypeSize("w") );
     
     std::vector<int> indices;
+    for (const auto& con: C_X){
+        indices = con.getVarIndices();
+        unsigned long i = 0;
+        for(; i < indices.size(); i++){
+            if(indices[i] >= endW || indices[i] < beginW)
+                break;
+        }
+        if(i >= indices.size())
+            con.addToCplex(env, lp);
+    }
+    
     for (const auto& con: C_XQ){
         indices = con.getVarIndices();
         unsigned long i = 0;
@@ -3104,8 +3116,6 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     // Robustify w
     robustifyW(env, lp);
     
-    // CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK", "LP");
-    
     if(h && rmatbeg_ws.size()){
         assert(rmatbeg_ws.size() == rhs_ws.size());
         assert(sense_ws.size() == rhs_ws.size());
@@ -3113,7 +3123,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
         
         CPXXaddrows(env, lp, 0, rmatbeg_ws.size(), rmatind_ws.size(), &rhs_ws[0], &sense_ws[0], &rmatbeg_ws[0], &rmatind_ws[0], &rmatval_ws[0], nullptr, nullptr);
     }
-    
+    // CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK", "LP");
     // set options
     CPXXchgobjsen(env, lp, CPX_MIN);
     CPXXchgprobtype(env, lp, CPXPROB_MILP); // to use callbacks
@@ -3149,7 +3159,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     else {
         MYERROR(status);
     }
-    
+    // CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/test", "LP");
     double end_time = get_wall_time();
 
     if (COLLECT_RESULTS) {
@@ -3266,15 +3276,17 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
     
     status = CPXXlpopt(env_sub, lp_sub);
     
-    if(status)
-        return status;
+    if(status){
+        std::cout << "Error in solving problem for subgradient cut, status: " << status;
+        assert(false);
+    }
 
     // get the objval for the relaxation
     CPXXgetobjval(env_sub, lp_sub, &rhs);
     
-    //get new lower bound
-    if(rhs < L)
-        setL(rhs);
+    // get new lower bound
+//    if(rhs > L)
+//        setL(rhs);
     
     // get the value of dual variables
     int numCstr(CPXXgetnumrows(env_sub, lp_sub));
@@ -3313,8 +3325,20 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
     sense = 'G';
     rmatbeg = 0;
     
+    bool useful = false;
+    for(int i = 1; i<= size; i++){
+        if(abs(rmatval[i]) > EPS_INFEASIBILITY_X){
+            useful = true;
+            break;
+        }
+    }
+    if(!useful){
+        status = 1;
+        std::cout << "warning, useless subgradient cut.\n\n";
+    }
+    
     // reset(*dataInfo, NK);
-    return 0;
+    return status;
 }
 
 int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std::vector<double>>& q, std::vector<double>& rhs, std::vector<char>& sense, std::vector<CPXNNZ>& rmatbeg, std::vector<CPXDIM>& rmatind, std::vector<double>& rmatval, CPXDIM &rcnt, CPXNNZ &nzcnt)
@@ -3456,6 +3480,10 @@ int KAdaptableSolver::drawPsi(const unsigned int K, const std::vector<double>& r
     std::vector<int> num = numBP;
     getIndices(num, indice);
     
+    int numW = pInfo->getVarsX().getDefVarTypeSize("w");
+    int numX = pInfo->getVarsX().getDefVarTypeSize("x");
+    int numY = pInfo->getVarsY().getDefVarTypeSize("y");
+    
     for(auto bound : bounds)
         assert(bound.first < bound.second);
     
@@ -3468,13 +3496,27 @@ int KAdaptableSolver::drawPsi(const unsigned int K, const std::vector<double>& r
         
         std::vector<double> x;
         std::vector<std::vector<double>> q;
-        
         int status;
-        status = solve_KAdaptability(K, false, x, q, roSol);
-        if(status)
-            return status;
+        double xBest;
         
-        results.emplace_back(x[0]);
+        for(uint ki = 0; ki < K; ki++){
+            x.clear();
+            q.clear();
+            std::vector<double> roSolNew;
+            roSolNew = std::vector<double>(roSol.begin(), roSol.begin() + numW + numX);
+            roSolNew.insert(roSolNew.end(), roSol.begin() + numW + numX + ki*numY, roSol.end());
+            
+            if(ki)
+                roSolNew.insert(roSolNew.end(), roSol.begin() + numW + numX, roSol.begin() + numW + numX + ki*numY);
+            
+            status = solve_KAdaptability(K, false, x, q, roSolNew);
+            if(status)
+                return status;
+            
+            if(x[0] < xBest)
+                xBest = x[0];
+        }
+        results.emplace_back(xBest);
     }
     
     return 0;
@@ -3828,7 +3870,7 @@ int KAdaptableSolver::solve_KAdaptability(const unsigned int K, const bool h, st
 
     
 	double start_time = get_wall_time();
-    std::cout << "Strat to evaluate. \n\n";
+    std::cout << "Start to evaluate. \n\n";
 	// solve problem
 	status = CPXXmipopt(env, lp);
 	if (!status) {
@@ -5334,13 +5376,6 @@ static int CPXPUBLIC cutCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
             //std::cout << l << ',';
             samples_k.emplace_back(S->bb_samples[l]);
 		}
-        //std::cout << std::endl;
-
-        
-        //for (const auto& xx : xk) {
-            //std::cout << xx << ',';
-        //}
-        //std::cout << std::endl;
         
         if (samples_k.empty()) continue;
         
@@ -5359,21 +5394,8 @@ static int CPXPUBLIC cutCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
         int labelq;
 
 		// check constraints (x, y, q)
-        // MARK: Qing get the worst case scenario \xi^k for y_k by the v inside feasible_YQ
-//		if (!S->feasible_YQ(xk, 1, samples_k, label)) {
-//
-//			// get all constraints
-//			S->getYQ_fixedQ(k, samples_k[label], rcnt, nzcnt, rhs, sense, rmatbeg, rmatind, rmatval);
-//		}
-//        if(!S->feasible_RobustYQ(xk, samples_k, q, labelCstr)){
-//            S->getYQ_fixedQ(k, q, rcnt, nzcnt, rhs, sense, rmatbeg, rmatind, rmatval);
-//        }
-//		else {
-//			assert(S->feasible_SRO(xk, samples_k, label));
-//            exitCallback(cut);
-//		}
         if(S->feasible_RobustYQ(xk, samples_k, q, labelCstr, labelq)){
-            assert(S->feasible_SRO(xk, samples_k, label));
+            assert(S->feasible_YQ(xk, 1, samples_k, label));
             continue;
         }
 
@@ -5517,20 +5539,22 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
             std::vector<CPXDIM> rmatind_sg;
             std::vector<double> rmatval_sg;
             
-            S->addSGCut(w, q, rhs_sg, sense_sg, rmatbeg_sg, rmatind_sg, rmatval_sg);
-
-            CPXXcutcallbackadd(env, cbdata, wherefrom, size + 1, rhs_sg, sense_sg, &rmatind_sg[0], &rmatval_sg[0], CPX_USECUT_FORCE);
+            int sgStatus(S->addSGCut(w, q, rhs_sg, sense_sg, rmatbeg_sg, rmatind_sg, rmatval_sg));
             
-            std::cout << "Add subgradient cut\n\n";
-            // subgradient cut is useful for subgradient cut
-            assert(S->rhs_ws.size() == S->sense_ws.size());
-            assert(S->rhs_ws.size() == S->rmatbeg_ws.size());
-            S->rhs_ws.emplace_back(rhs_sg);
-            S->sense_ws.emplace_back(sense_sg);
-            assert(S->rmatind_ws.size() == S->rmatval_ws.size());
-            S->rmatbeg_ws.emplace_back(S->rmatind_ws.size());
-            S->rmatind_ws.insert(S->rmatind_ws.end(), rmatind_sg.begin(), rmatind_sg.end());
-            S->rmatval_ws.insert(S->rmatval_ws.end(), rmatval_sg.begin(), rmatval_sg.end());
+            if(!sgStatus){
+                CPXXcutcallbackadd(env, cbdata, wherefrom, size + 1, rhs_sg, sense_sg, &rmatind_sg[0], &rmatval_sg[0], CPX_USECUT_FORCE);
+                
+                std::cout << "Add subgradient cut\n\n";
+                // subgradient cut is useful for subgradient cut
+                assert(S->rhs_ws.size() == S->sense_ws.size());
+                assert(S->rhs_ws.size() == S->rmatbeg_ws.size());
+                S->rhs_ws.emplace_back(rhs_sg);
+                S->sense_ws.emplace_back(sense_sg);
+                assert(S->rmatind_ws.size() == S->rmatval_ws.size());
+                S->rmatbeg_ws.emplace_back(S->rmatind_ws.size());
+                S->rmatind_ws.insert(S->rmatind_ws.end(), rmatind_sg.begin(), rmatind_sg.end());
+                S->rmatval_ws.insert(S->rmatval_ws.end(), rmatval_sg.begin(), rmatval_sg.end());
+            }
         }
     }
     // if given w_t is feasible for the inner problem, add optimality cut

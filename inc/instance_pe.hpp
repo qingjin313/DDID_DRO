@@ -71,7 +71,9 @@ static inline void gen_PE(PE& data, unsigned int n, int seed = 1) {
 
 	// # of items
 	data.N = n;
-	data.Q = n/2;
+	data.Q = n%2? (n+1)/2 : n/2;
+    if(data.Q >= 5)
+        data.Q = 5;
     
     data.phi.resize(n);
     for (n = 0; (int)n < data.N; n++) {

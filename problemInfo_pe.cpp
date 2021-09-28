@@ -141,13 +141,13 @@ void KAdaptableInfo_PE::makeVars() {
     // should always be defined and should always be declared first
     X.addVarType("O", 'C', -CPX_INFBOUND, +CPX_INFBOUND, 1);
     
-    // dual variable for the ambiguity set
-    if(USE_DRO)
-        X.addVarType("psi", 'C', 0, 100, 1+data.N*USE_SINGLE );
-    
     // x(i) : invest in project i before observing risk factors
     X.addVarType("w", 'B', 0, 1, data.N);
     C_W.assign(data.N, 0.0);
+    
+    // dual variable for the ambiguity set
+    if(USE_DRO)
+        X.addVarType("psi", 'C', 0, 100, 1+data.N*USE_SINGLE );
     
     // y(i) : invest in project i after observing risk factors
     Y.addVarType("y", 'B', 0, 1, data.N);
@@ -251,6 +251,18 @@ void KAdaptableInfo_PE::makeConsY(unsigned int l) {
             temp.addTermX(getVarIndex_2(k, "y", i), 1.0);
         }
         C_XY[k].emplace_back(temp);
+        
+        for (int i = 0; i <= data.N-1; ++i) {
+            temp.clear();
+            temp.rowname("TAKE(" + std::to_string(i) + "," + std::to_string(k) + ")");
+            temp.sign('L');
+            temp.RHS(0.0);
+            temp.addTermX(getVarIndex_1("w", i), -1.0);
+            temp.addTermX(getVarIndex_2(k, "y", i), 1.0);
+
+            C_XY[k].emplace_back(temp);
+            //temp.print();
+        }
     }
     
     
@@ -299,12 +311,12 @@ void KAdaptableInfo_PE::makeConsY(unsigned int l) {
 void KAdaptableInfo_PE::setInstance(const PE& d) {
     data = d;
     hasInteger = 1;
-    objectiveUnc = true;
+    objectiveUnc = false;
     existsFirstStage = 1;
     numFirstStage = 1 + data.N;
     numSecondStage = data.N;
     numPolicies = 1;
-    wDetObjOnly = true;
+    wDetObjOnly = false;
     solfilename = data.solfilename;
     
     makeUncSet();

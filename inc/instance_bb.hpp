@@ -102,11 +102,32 @@ static inline void gen_BB(BB& data, unsigned int n, int seed = 1) {
     // Risk factor coefficients
     data.phi.resize(data.N);
     data.ksi.resize(data.N);
+    
     for (n = 0; (int)n <= data.N-1; n++) {
-        // generate F numbers between -1 and 1
-        for (size_t f = 1; f <= BB_NFACTORS; f++) {
-            data.phi[n][f] = interval_1(gen);
-            data.ksi[n][f] = interval_1(gen);
+        bool reSample = true;
+        while(reSample){
+            double total = 0.0;
+            // generate F numbers between -1 and 1
+            for (size_t f = 1; f <= BB_NFACTORS; f++) {
+                data.ksi[n][f] = interval_1(gen);
+                total += std::abs(data.ksi[n][f]);
+            }
+            if (total <= 2.0)
+                reSample = false;
+        }
+    }
+    
+    for (n = 0; (int)n <= data.N-1; n++) {
+        bool reSample = true;
+        while(reSample){
+            double total = 0.0;
+            // generate F numbers between -1 and 1
+            for (size_t f = 1; f <= BB_NFACTORS; f++) {
+                data.phi[n][f] = interval_1(gen);
+                total += std::abs(data.phi[n][f]);
+            }
+            if (total <= 2.0)
+                reSample = false;
         }
     }
     

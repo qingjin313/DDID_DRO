@@ -9,7 +9,7 @@
 #include <cassert>
 
 #define CSTR_UNC 1
-#define USE_SINGLE 0
+#define USE_DEV 1
 #define USE_DRO 1
 //-----------------------------------------------------------------------------------
 
@@ -92,7 +92,7 @@ void KAdaptableInfo_BB::makeUncSet() {
             numAmbCstr += 1;
         }
         
-        if(USE_SINGLE){
+        if(USE_DEV){
             // bounds for single derivation to the single nominal profit
             for(int i = 0; i<= data.N-1; i++){
                 // U.addParam(0, 0, profit_high[i]);
@@ -149,7 +149,7 @@ void KAdaptableInfo_BB::makeUncSet() {
 //        U.addFacet(cstr_pos, 'L', -nominalTotal + 0.25*nominalTotal/sqrt(data.N));
 //        U.addFacet(cstr_neg, 'L', nominalTotal + 0.25*nominalTotal/sqrt(data.N));
 //    }
-//
+    
     if(USE_DRO){
         std::vector<std::pair<int, double> > cstr_pos;
         std::vector<std::pair<int, double> > cstr_neg;
@@ -181,7 +181,7 @@ void KAdaptableInfo_BB::makeUncSet() {
             U.addFacet(cstr_neg, 'G', nominalTotal);
         }
         
-        if(USE_SINGLE){
+        if(USE_DEV){
             for(int i = 0; i<= data.N-1; i++){
                 cstr_pos.clear();
                 cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0));
@@ -199,12 +199,12 @@ void KAdaptableInfo_BB::makeUncSet() {
                     cstr_pos.clear();
                     cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
                     cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
-                    U.addFacet(cstr_pos, 'G', -data.cost[i]);
+                    U.addFacet(cstr_pos, 'G', -data.profit[i]);
 
                     cstr_neg.clear();
                     cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
                     cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, 1.0));
-                    U.addFacet(cstr_neg, 'G', data.cost[i]);
+                    U.addFacet(cstr_neg, 'G', data.profit[i]);
                 }
             }
         }
@@ -230,14 +230,11 @@ void KAdaptableInfo_BB::makeVars() {
     C_W.assign(data.N, 0.0);
     
     // dual variable for the ambiguity set
-    if(USE_DRO)
-        X.addVarType("psi", 'C', 0, 100, (1+CSTR_UNC)*(1+data.N*USE_SINGLE) );
+    if(USE_DEV)
+        X.addVarType("psi", 'C', 0, 100, (1+CSTR_UNC)*(1+data.N*USE_DEV) );
 
     // y(i) : take box i
     Y.addVarType("y", 'B', 0, 1, data.N);
-    
-    // z(i) : change box i
-    // Y.addVarType("z", 'B', 0, 1, data.N);
 
     // define objective variable
     X.setVarObjCoeff(1.0, "O", 0);
@@ -361,7 +358,6 @@ void KAdaptableInfo_BB::makeConsY(unsigned int l) {
             temp.RHS(0.0);
             temp.addTermX(getVarIndex_1("w", i), -1.0);
             temp.addTermX(getVarIndex_2(k, "y", i), 1.0);
-            // temp.addTermX(getVarIndex_2(k, "z", i), -1.0);
             
             C_XY[k].emplace_back(temp);
             //temp.print();
@@ -398,32 +394,30 @@ void KAdaptableInfo_BB::makeConsY(unsigned int l) {
         temp.addTermX(getVarIndex_1("O", 0), 1);
         for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
             temp.addTermProduct(getVarIndex_2(k, "y", i), data.phi[0].size() + i);
-            // temp.addTermX(getVarIndex_2(k, "z", i), -0.1);
-            // temp.addTermProduct(getVarIndex_1("w", i), data.phi[0].size() + data.N + i, -1.0);
             nomProfit += data.profit[i];
             nomCost += data.cost[i];
         }
         if(USE_DRO){
             temp.addTermProduct(getVarIndex_1("psi", 0), data.phi[0].size() + (1+CSTR_UNC)*data.N, 1.0);
-            temp.addTermX(getVarIndex_1("psi", 0), -0.15*nomProfit/sqrt(data.N));
+            temp.addTermX(getVarIndex_1("psi", 0), -0.25*nomProfit/sqrt(data.N));
             
             if(CSTR_UNC){
                 temp.addTermProduct(getVarIndex_1("psi", 1), data.phi[0].size() + (1+CSTR_UNC)*data.N + 1, 1.0);
-                temp.addTermX(getVarIndex_1("psi", 1), -0.15*nomCost/sqrt(data.N));
+                temp.addTermX(getVarIndex_1("psi", 1), -0.25*nomCost/sqrt(data.N));
             }
             
-            if(USE_SINGLE){
+            if(USE_DEV){
                 for (int i = 0; i <= data.N-1; ++i)
                 {
                     temp.addTermProduct(getVarIndex_1("psi", i + 1 + CSTR_UNC), data.phi[0].size() + (1+CSTR_UNC)*(data.N + 1) + i, 1.0);
-                    temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC), -0.15*data.profit[i]);
+                    temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC), -0.25*data.profit[i]);
                 }
                 
                 if(CSTR_UNC){
                     for (int i = 0; i <= data.N-1; ++i)
                     {
                         temp.addTermProduct(getVarIndex_1("psi", i + 1 + CSTR_UNC + data.N), data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0);
-                        temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC + data.N), -0.15*data.cost[i]);
+                        temp.addTermX(getVarIndex_1("psi", i + 1 + CSTR_UNC + data.N), -0.25*data.cost[i]);
                     }
                 }
             }
@@ -443,6 +437,358 @@ void KAdaptableInfo_BB::setInstance(const BB& d) {
     objectiveUnc = !CSTR_UNC;
     existsFirstStage = 1;
     numFirstStage = 1 + data.N;
+    numSecondStage = data.N;
+    numPolicies = 1;
+    wDetObjOnly = false;
+    solfilename = data.solfilename;
+
+    makeUncSet();
+    makeVars();
+    makeConsX();
+    makeConsY(0);
+    assert(isConsistentWithDesign());
+}
+
+//-----------------------------------------------------------------------------------
+
+//
+//  problemInfo_bb.cpp
+//  Kadaptability
+//
+//  Created by 靳晴 on 9/6/21.
+//
+
+#include "problemInfo_bb.hpp"
+#include <cassert>
+
+#define CSTR_UNC 0
+#define USE_DEV 0
+#define USE_DRO 0
+#define ALPHA 0.15
+//-----------------------------------------------------------------------------------
+
+void KAdaptableInfo_BB::makeUncSet() {
+    U.clear();
+    numAmbCstr = 0;
+
+    // define uncertain return in box uncertainty
+    for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+        // add uncertain profit
+        U.addParam(data.profit[i], (1-ALPHA)*data.profit[i], (1+ALPHA)*data.profit[i]);
+        // set observation decision associated with this uncertain parameter
+        U.setObsVar(std::make_pair(1 + i, i));
+    }
+    
+    if(CSTR_UNC){
+        // define uncertain cost in box uncertainty
+        for (int i = 0; i <= data.N-1; ++i) if (data.cost[i] != 0.0) {
+            // add uncertain cost
+            U.addParam(data.cost[i], (1-ALPHA)*data.cost[i], (1+ALPHA)*data.cost[i]);
+            // set observation decision associated with this uncertain parameter
+            U.setObsVar(std::make_pair(1 + i, i));
+        }
+    }
+    
+    if(USE_DRO && USE_DEV){
+        // bounds for single derivation to the single nominal profit
+        for(int i = 0; i<= data.N-1; i++){
+            // U.addParam(0, 0, profit_high[i]);
+            U.addParam(0, 0, ALPHA*data.profit[i]);
+        }
+        
+        if(CSTR_UNC){
+            // bounds for single derivation to the single nominal cost
+            for(int i = 0; i<= data.N-1; i++){
+                // U.addParam(0, 0, cost_high[i]);
+                U.addParam(0, 0, ALPHA*data.cost[i]);
+            }
+        }
+    }
+    
+//    use the total deviation from the nominal total value as support constraint
+//    std::vector<std::pair<int, double> > cstr_pos;
+//    std::vector<std::pair<int, double> > cstr_neg;
+    std::vector<std::pair<int, double> > cstr;
+    double nominalTotal = 0.0;
+
+    for (int i = 1; i <= data.N; ++i) if (data.profit[i-1] != 0.0){
+        nominalTotal += data.profit[i-1];
+//        cstr_pos.emplace_back(std::make_pair(i, -1.0));
+//        cstr_neg.emplace_back(std::make_pair(i, 1.0));
+        cstr.emplace_back(std::make_pair(i, 1.0));
+    }
+//    U.addFacet(cstr_pos, 'L', -nominalTotal + ALPHA*nominalTotal/sqrt(data.N));
+//    U.addFacet(cstr_neg, 'L', nominalTotal + ALPHA*nominalTotal/sqrt(data.N));
+    U.addFacet(cstr, 'E', nominalTotal);
+
+    if(CSTR_UNC){
+//        cstr_pos.clear();
+//        cstr_neg.clear();
+        cstr.clear();
+        nominalTotal = 0.0;
+
+        for (int i = 1; i <= data.N; ++i) if (data.cost[i-1] != 0.0){
+            nominalTotal += data.cost[i-1];
+//            cstr_pos.emplace_back(std::make_pair(data.N + i, -1.0));
+//            cstr_neg.emplace_back(std::make_pair(data.N + i, 1.0));
+            cstr.emplace_back(std::make_pair(data.N + i, 1.0));
+        }
+//        U.addFacet(cstr_pos, 'L', -nominalTotal + 0.25*nominalTotal/sqrt(data.N));
+//        U.addFacet(cstr_neg, 'L', nominalTotal + 0.25*nominalTotal/sqrt(data.N));
+        U.addFacet(cstr, 'E', nominalTotal);
+    }
+
+    std::vector<std::pair<int, double> > cstr_pos;
+    std::vector<std::pair<int, double> > cstr_neg;
+    if(USE_DRO && USE_DEV){
+        for(int i = 1; i<= data.N; i++){
+            cstr_pos.clear();
+            cstr_pos.emplace_back(std::make_pair((1+CSTR_UNC)*data.N + i, 1.0));
+            cstr_pos.emplace_back(std::make_pair(i, -1.0));
+            U.addFacet(cstr_pos, 'G', -data.profit[i-1]);
+
+            cstr_neg.clear();
+            cstr_neg.emplace_back(std::make_pair((1+CSTR_UNC)*data.N + i, 1.0));
+            cstr_neg.emplace_back(std::make_pair(i, 1.0));
+            U.addFacet(cstr_neg, 'G', data.profit[i-1]);
+        }
+        
+        if(CSTR_UNC){
+            for(int i = 1; i<= data.N; i++){
+                cstr_pos.clear();
+                cstr_pos.emplace_back(std::make_pair( (2+CSTR_UNC)*data.N + i, 1.0));
+                cstr_pos.emplace_back(std::make_pair(data.N + i, -1.0));
+                U.addFacet(cstr_pos, 'G', -data.cost[i-1]);
+
+                cstr_neg.clear();
+                cstr_neg.emplace_back(std::make_pair((2+CSTR_UNC)*data.N + i, 1.0));
+                cstr_neg.emplace_back(std::make_pair(data.N + i, 1.0));
+                U.addFacet(cstr_neg, 'G', data.cost[i-1]);
+            }
+        }
+    }
+    
+//    int stat;
+//    CPXXwriteprob(U.getENVObject(), U.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK_before", "LP");
+}
+
+//-----------------------------------------------------------------------------------
+
+void KAdaptableInfo_BB::makeVars() {
+    X.clear();
+    Y.clear();
+
+    // objective variable (considered to be 1st-stage)
+    // should always be defined and should always be declared first
+    X.addVarType("O", 'C', -CPX_INFBOUND, +CPX_INFBOUND, 1);
+    
+    // x(i) : observe box i
+    X.addVarType("w", 'B', 0, 1, data.N);
+    C_W.assign(data.N, 0.0);
+    
+    // dual variable for the ambiguity set
+    if(USE_DRO){
+        X.addVarType("psi_mu", 'C', -50, 50, data.N*(1+CSTR_UNC));
+        if(USE_DEV)
+            X.addVarType("psi_dev", 'C', 0, 50, data.N*(1+CSTR_UNC));
+    }
+
+    // y(i) : take box i
+    Y.addVarType("y", 'B', 0, 1, data.N);
+
+    // define objective variable
+    X.setVarObjCoeff(1.0, "O", 0);
+}
+
+//-----------------------------------------------------------------------------------
+
+void KAdaptableInfo_BB::makeConsX() {
+    ConstraintExpression temp;
+
+    /////////
+    // B_X //
+    /////////
+    B_X.clear();
+
+    // bounds on w(i)
+    for (int i = 0; i <= data.N-1; ++i) {
+        temp.clear();
+        temp.addTermX(getVarIndex_1("w", i), 1);
+
+        temp.rowname("LB_w(" + std::to_string(i) + ")");
+        temp.sign('G');
+        temp.RHS(0);
+        B_X.emplace_back(temp);
+
+        temp.rowname("UB_w(" + std::to_string(i) + ")");
+        temp.sign('L');
+        temp.RHS(1);
+        B_X.emplace_back(temp);
+    }
+
+
+
+    /////////
+    // C_X //
+    /////////
+    C_X.clear();
+    if(!CSTR_UNC){
+        temp.clear();
+        for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+            temp.rowname("BUDGET");
+            temp.sign('L');
+            temp.RHS(data.B);
+            temp.addTermX(getVarIndex_1("w", i), data.cost[i]);
+        }
+        C_X.emplace_back(temp);
+        //temp.print();
+    }
+
+
+    //////////
+    // C_XQ //
+    //////////
+    C_XQ.clear();
+    // All the XQ constraint should be dualized before adding into the problem, or it may cause error
+    // In this problem, this constraint only involve w, so we add it into the problem through the function robustifyW in the outerloop
+    if(CSTR_UNC){
+        temp.clear();
+        temp.rowname("BUDGET");
+        temp.sign('L');
+        temp.RHS(data.B);
+        for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+            temp.addTermProduct(getVarIndex_1("w", i), 1 + data.N + i, 1.0);
+        }
+        C_XQ.emplace_back(temp);
+    }
+}
+
+//-----------------------------------------------------------------------------------
+
+void KAdaptableInfo_BB::makeConsY(unsigned int l) {
+    assert(C_XY.size() == B_Y.size());
+    assert(C_XY.size() == C_XYQ.size());
+    assert(numPolicies >= l);
+    if (l == 0) {
+        B_Y.clear();
+        C_XY.clear();
+        C_XYQ.clear();
+    }
+    ConstraintExpression temp;
+
+    /////////
+    // B_Y //
+    /////////
+    for (unsigned int k = B_Y.size(); k <= l; k++) {
+        if (B_Y.size() < k + 1) B_Y.resize(k + 1);
+
+        B_Y[k].clear();
+
+        // bounds on y(i)
+        for (int i = 0; i <= data.N-1; ++i) {
+            temp.clear();
+            temp.addTermX(getVarIndex_2(k, "y", i), 1);
+
+            temp.rowname("LB_y(" + std::to_string(i) + "," + std::to_string(k) + ")");
+            temp.sign('G');
+            temp.RHS(0);
+            B_Y[k].emplace_back(temp);
+
+            temp.rowname("UB_y(" + std::to_string(i) + "," + std::to_string(k) + ")");
+            temp.sign('L');
+            temp.RHS(1);
+            B_Y[k].emplace_back(temp);
+        }
+    }
+
+
+    //////////
+    // C_XY //
+    //////////
+    for (unsigned int k = C_XY.size(); k <= l; k++) {
+        if (C_XY.size() < k + 1) C_XY.resize(k + 1);
+
+        C_XY[k].clear();
+
+        // take only after open
+        for (int i = 0; i <= data.N-1; ++i) {
+            temp.clear();
+            temp.rowname("TAKE(" + std::to_string(i) + "," + std::to_string(k) + ")");
+            temp.sign('L');
+            temp.RHS(0.0);
+            temp.addTermX(getVarIndex_1("w", i), -1.0);
+            temp.addTermX(getVarIndex_2(k, "y", i), 1.0);
+
+            C_XY[k].emplace_back(temp);
+            //temp.print();
+        }
+        
+        // take only one
+        temp.clear();
+        for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+            temp.rowname("ONE(" + std::to_string(k) + ")");
+            temp.sign('L');
+            temp.RHS(1.0);
+            temp.addTermX(getVarIndex_2(k, "y", i), 1.0);
+        }
+        C_XY[k].emplace_back(temp);
+    }
+
+        
+    ///////////
+    // C_XYQ //
+    ///////////
+    for (unsigned int k = C_XYQ.size(); k <= l; k++) {
+        if (C_XYQ.size() < k + 1) C_XYQ.resize(k + 1);
+        
+        C_XYQ[k].clear();
+
+        // objective function
+        temp.clear();
+        temp.rowname("OBJ_CONSTRAINT(" + std::to_string(k) + ")");
+        temp.sign('G');
+        temp.RHS(0.0);
+        temp.addTermX(getVarIndex_1("O", 0), 1);
+        for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+            temp.addTermProduct(getVarIndex_2(k, "y", i), 1 + i);
+//            if(CSTR_UNC)
+//                temp.addTermProduct(getVarIndex_1("w", i), 1 + data.N + i, -1.0);
+//            else
+//                temp.addTermX(getVarIndex_1("w", i), -data.cost[i]);
+        }
+        if(USE_DRO){
+            for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+                temp.addTermProduct(getVarIndex_1("psi_mu", i), 1 + i);
+                temp.addTermX(getVarIndex_1("psi_mu", i), -data.profit[i]);
+                if(CSTR_UNC){
+                    temp.addTermProduct(getVarIndex_1("psi_mu", i + data.N*CSTR_UNC), 1 + data.N + i);
+                    temp.addTermX(getVarIndex_1("psi_mu", i + data.N), -data.cost[i]);
+                }
+                if(USE_DEV){
+                    temp.addTermProduct(getVarIndex_1("psi_dev", 1 + i), 1 + data.N*(USE_DEV+CSTR_UNC) + i);
+                    temp.addTermX(getVarIndex_1("psi_dev", i + 1), -0.15*data.profit[i]);
+                    if(CSTR_UNC){
+                        temp.addTermProduct(getVarIndex_1("psi_dev", i + data.N), 1 + data.N*(1+CSTR_UNC+USE_DEV) + i);
+                        temp.addTermX(getVarIndex_1("psi_dev", i + data.N), -0.15*data.cost[i]);
+                    }
+                }
+            }
+        }
+        
+        C_XYQ[k].emplace_back(temp);
+        //C_XYQ[k][0].print();
+
+    }
+}
+
+//-----------------------------------------------------------------------------------
+
+void KAdaptableInfo_BB::setInstance(const BB& d) {
+    data = d;
+    hasInteger = 1;
+    objectiveUnc = !CSTR_UNC;
+    existsFirstStage = 1;
+    numFirstStage = 1 + data.N + data.N*(USE_DRO*(1 + CSTR_UNC)*(1 + USE_DEV));
     numSecondStage = data.N;
     numPolicies = 1;
     wDetObjOnly = false;
