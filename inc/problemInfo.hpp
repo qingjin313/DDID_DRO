@@ -50,6 +50,9 @@ protected:
     
     /** w in objective funtion with deterministic part only*/
     bool wDetObjOnly;
+    
+    /** XQ constraint have w and q*/
+    bool wXQOnly;
 
 	/** # of 2nd-stage policies */
 	unsigned int numPolicies;

@@ -3228,7 +3228,7 @@ int KAdaptableSolver::addSGCut(const std::vector<bool>& w, const std::vector<std
     
     env_sub = CPXXopenCPLEX (&status);
     lp_sub  = CPXXcreateprob(env_sub, &status, "Sub_Gradient");
-    
+    CPXXsetdblparam(env_sub, CPX_PARAM_EPRHS, EPS_INFEASIBILITY_X);
     
     // use the update function to add constraints into the problem
     int newK = q.size();
@@ -5360,7 +5360,7 @@ static int CPXPUBLIC cutCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 	///////////////////////////////////////////////////////////////////////////
 	// NOTE -- I AM ASSUMING THAT ALL CONSTRAINTS (X,Q) HAVE BEEN DUALIZED!! //
 	///////////////////////////////////////////////////////////////////////////
-	// assert(S->feasible_XQ(x, Q_TEMP));
+	assert(S->feasible_XQ(x, Q_TEMP));
 	
 
 	// construct policy k solution
@@ -5396,52 +5396,51 @@ static int CPXPUBLIC cutCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 		// check constraints (x, y, q)
         if(S->feasible_RobustYQ(xk, samples_k, q, labelCstr, labelq)){
             assert(S->feasible_YQ(xk, 1, samples_k, label));
-            continue;
-        }
-
-
-		// Add only the most violated constraint
-		double maxViol = 0;
-		double rhs_cut = 0;
-		char sense_cut = 'L';
-		std::vector<int> cutind;
-		std::vector<double> cutval;
-        
-        if(GET_MAX_VIOL){
-            S->getSingleYQ_fixedQ(k, labelCstr, q, nzcnt, rhs_cut, sense_cut, cutind, cutval);
-            maxViol = q[0];
         }
         else{
+            // Add only the most violated constraint
+            double maxViol = 0;
+            double rhs_cut = 0;
+            char sense_cut = 'L';
+            std::vector<int> cutind;
+            std::vector<double> cutval;
             
-            S->getYQ_fixedQ(k, q, rcnt, nzcnt, rhs, sense, rmatbeg, rmatind, rmatval);
-            
-            for (CPXDIM i = 0; i < rcnt; i++) {
+            if(GET_MAX_VIOL){
+                S->getSingleYQ_fixedQ(k, labelCstr, q, nzcnt, rhs_cut, sense_cut, cutind, cutval);
+                maxViol = q[0];
+            }
+            else{
+                
+                S->getYQ_fixedQ(k, q, rcnt, nzcnt, rhs, sense, rmatbeg, rmatind, rmatval);
+                
+                for (CPXDIM i = 0; i < rcnt; i++) {
 
-                // coefficients and indices of this constraint
-                CPXDIM next = (i + 1 == rcnt) ? nzcnt : rmatbeg[i+1];
-                std::vector<int> cutind_i(rmatind.begin() + rmatbeg[i], rmatind.begin() + next);
-                std::vector<double> cutval_i(rmatval.begin() + rmatbeg[i], rmatval.begin() + next);
+                    // coefficients and indices of this constraint
+                    CPXDIM next = (i + 1 == rcnt) ? nzcnt : rmatbeg[i+1];
+                    std::vector<int> cutind_i(rmatind.begin() + rmatbeg[i], rmatind.begin() + next);
+                    std::vector<double> cutval_i(rmatval.begin() + rmatbeg[i], rmatval.begin() + next);
 
-                // check violation
-                const auto W = checkViol(env, cbdata, wherefrom, rhs[i], sense[i], cutind_i, cutval_i);
-                if (W.first > maxViol) {
-                    maxViol = W.first;
-                    rhs_cut = rhs[i];
-                    sense_cut = sense[i];
-                    cutind = cutind_i;
-                    cutval = cutval_i;
+                    // check violation
+                    const auto W = checkViol(env, cbdata, wherefrom, rhs[i], sense[i], cutind_i, cutval_i);
+                    if (W.first > maxViol) {
+                        maxViol = W.first;
+                        rhs_cut = rhs[i];
+                        sense_cut = sense[i];
+                        cutind = cutind_i;
+                        cutval = cutval_i;
+                    }
                 }
             }
+            // Add local cut
+            if (maxViol > EPS_INFEASIBILITY_Q) {
+                CPXXcutcallbackaddlocal(env, cbdata, wherefrom, cutind.size(), rhs_cut, sense_cut, &cutind[0], &cutval[0]);
+                S->bb_samples_all[nodeInfo->labels[k][labelq]].emplace_back(q);
+                //std::cout << "here! add constraints for violation!" << k << std::endl;
+                *useraction_p = CPX_CALLBACK_SET;
+            }
         }
-		// Add local cut
-		if (maxViol > EPS_INFEASIBILITY_Q) {
-			CPXXcutcallbackaddlocal(env, cbdata, wherefrom, cutind.size(), rhs_cut, sense_cut, &cutind[0], &cutval[0]);
-            S->bb_samples_all[nodeInfo->labels[k][labelq]].emplace_back(q);
-            //std::cout << "here! add constraints for violation!" << k << std::endl;
-			*useraction_p = CPX_CALLBACK_SET;
-		}
-	}
-    
+    }
+
 	exitCallback(cut);
 }
 
@@ -5525,6 +5524,8 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     std::vector<double> x;
     std::vector<std::vector<double>> q;
     // S->setVarUB(S->bestU, 0);
+    // double check for the XQ constraint only involve w and q
+    
     int solstat = S->solve_KAdaptability(K, false, x, q);
     S->addwBounds(w);
     
