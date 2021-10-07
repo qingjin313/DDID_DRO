@@ -26,20 +26,29 @@ int main (int argc, char** argv) {
     assert(argc == 4);
     
     const bool heuristic_mode = true;
-	const unsigned int Kmax = 2;
+	const unsigned int Kmax = 3;
 	KAdaptableInfo *pInfo;
         
 	try {
         
         BB data;
         KAdaptableInfo_BB bbInfo;
-        int size = 10;
+        int size = 12;
 
-        gen_BB(data, size, 0); // set to 'true' to allow option of loans, origional seed is 1, old data seed is 0.
+        gen_BB(data, size, 1); // set to 'true' to allow option of loans, origional seed is 1, old data seed is 0.
         bbInfo.setInstance(data);
         pInfo = bbInfo.clone();
 
         KAdaptableSolver S(*pInfo);
+        
+        for (auto X : pInfo->getConstraintsX())
+            X.print();
+        for (auto XQ : pInfo->getConstraintsXQ())
+            XQ.print();
+        for (auto Y : pInfo->getConstraintsXY()[0])
+            Y.print();
+        for (auto YQ : pInfo->getConstraintsXYQ()[0])
+            YQ.print();
         
 //        std::vector<bool> w = {0,0,0,0,0,0,1,0,0,1};
 //        std::vector<double> x;

@@ -252,17 +252,17 @@ void KAdaptableInfo_PE::makeConsY(unsigned int l) {
         }
         C_XY[k].emplace_back(temp);
         
-        for (int i = 0; i <= data.N-1; ++i) {
-            temp.clear();
-            temp.rowname("TAKE(" + std::to_string(i) + "," + std::to_string(k) + ")");
-            temp.sign('L');
-            temp.RHS(0.0);
-            temp.addTermX(getVarIndex_1("w", i), -1.0);
-            temp.addTermX(getVarIndex_2(k, "y", i), 1.0);
-
-            C_XY[k].emplace_back(temp);
-            //temp.print();
-        }
+//        for (int i = 0; i <= data.N-1; ++i) {
+//            temp.clear();
+//            temp.rowname("TAKE(" + std::to_string(i) + "," + std::to_string(k) + ")");
+//            temp.sign('L');
+//            temp.RHS(0.0);
+//            temp.addTermX(getVarIndex_1("w", i), -1.0);
+//            temp.addTermX(getVarIndex_2(k, "y", i), 1.0);
+//
+//            C_XY[k].emplace_back(temp);
+//            //temp.print();
+//        }
     }
     
     
@@ -316,7 +316,7 @@ void KAdaptableInfo_PE::setInstance(const PE& d) {
     numFirstStage = 1 + data.N;
     numSecondStage = data.N;
     numPolicies = 1;
-    wDetObjOnly = false;
+    wDetObjOnly = true;
     solfilename = data.solfilename;
     
     makeUncSet();
