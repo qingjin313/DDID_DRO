@@ -218,9 +218,6 @@ void KAdaptableInfo_BB::makeUncSet() {
         }
     }
     numFirstStage += numAmbCstr;
-    
-    int stat;
-    CPXXwriteprob(U.getENVObject(), U.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK_before", "LP");
 }
 
 //-----------------------------------------------------------------------------------

@@ -20,7 +20,6 @@
 #include <iostream>
 #include <fstream>
 #include <numeric>
-///*
 #include <time.h>
 #include <sys/time.h>
 #include <iomanip>
@@ -1535,7 +1534,7 @@ bool KAdaptableSolver::feasible_YQ(const std::vector<double>& x, const unsigned 
 	// Objective uncertainty only: construct appropriate K-Adaptable expression //
 	//////////////////////////////////////////////////////////////////////////////
 	if (pInfo->hasObjectiveUncOnly()) {
-		// temporary		
+		// temporary
 		std::vector<ConstraintExpression> CExpr(K);
 		
 		for (unsigned int i = 0; i < K; ++i) {
@@ -1915,7 +1914,7 @@ bool KAdaptableSolver::feasible_YQ(const std::vector<double>& x, const unsigned 
 		
 		// Free memory
 		CPXXfreeprob(env, &lp);
-	}	
+	}
 
 
 
@@ -3150,7 +3149,7 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
         if (solstat == CPXMIP_OPTIMAL || solstat == CPXMIP_OPTIMAL_TOL) {
             solstat = 0;
         }
-        optsol.resize(CPXXgetnumcols(env, lp));
+        optsol.resize(X.getVarTypeSize("w"));
         if (CPXXgetx(env, lp, &optsol[0], 0, optsol.size() - 1) != 0) {
             std::cout << "Enable to get optimal w! /n";
             assert(false);
@@ -3159,7 +3158,6 @@ int KAdaptableSolver::solve_L_Shaped2(const unsigned int K, const bool h, std::o
     else {
         MYERROR(status);
     }
-    // CPXXwriteprob(env, lp, "/Users/lynn/Desktop/research/DRO/BnB/model_output/test", "LP");
     double end_time = get_wall_time();
 
     if (COLLECT_RESULTS) {
@@ -4525,7 +4523,7 @@ static int CPXPUBLIC branchCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, v
 	const unsigned int K = S->NK;
 
 
-	// Get node data	
+	// Get node data
 	void *nodeData = NULL; CPXXgetcallbacknodeinfo(env, cbdata, wherefrom, 0, CPX_CALLBACK_INFO_NODE_USERHANDLE, &nodeData);
 	CPXLONG depth = 0;     CPXXgetcallbacknodeinfo(env, cbdata, wherefrom, 0, CPX_CALLBACK_INFO_NODE_DEPTH_LONG, &depth);
 	double nodeobjval = 0; CPXXgetcallbacknodeinfo(env, cbdata, wherefrom, 0, CPX_CALLBACK_INFO_NODE_OBJVAL, &nodeobjval);
@@ -4875,7 +4873,7 @@ static int CPXPUBLIC branchCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, v
 	/////////////////////////////////
 	// CASE 1: NO NODE DATA EXISTS //
 	/////////////////////////////////
-	if (!nodeData) {		
+	if (!nodeData) {
 		// no option but to branch as CPLEX would
 		if (!label) {
 			for (int i = 0; i < nodecnt; i++) {
@@ -5027,12 +5025,12 @@ static int CPXPUBLIC branchCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, v
 
 
 
-			// 
+			//
 			// Next, create the second node data
 			// This is either a dummy node too
 			// or
 			// it is the last true child node corresponding to policy number 0
-			// 
+			//
 			if (oldInfo->numNodes > 2) {
 				// dummy node
 				newInfo0 = new CPLEX_CB_node(*oldInfo);
@@ -5132,12 +5130,12 @@ static int CPXPUBLIC branchCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, v
 					}
 
 
-					// 
+					//
 					// Next, create the second node data
 					// This is either a dummy node too
 					// or
 					// it is the last true child node corresponding to policy number 0
-					// 
+					//
 					if (k_max > 1) {
 						// dummy  node
 						newInfo0 = new CPLEX_CB_node(*oldInfo);
@@ -5165,7 +5163,7 @@ static int CPXPUBLIC branchCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, v
 							newInfo0->labels[0].emplace_back(label);
 						}
 					}
-				}	
+				}
 			}
 		}
 	}
@@ -5322,7 +5320,7 @@ static int CPXPUBLIC cutCB_solve_KAdaptability_cuttingPlane(CPXCENVptr env, void
 	if (!DECISION_DEPENDENT && (S->hasObjectiveUncOnly() || BNC_BRANCH_ALL_CONSTR)) exitCallback(cut);
 
 
-	// Get node data	
+	// Get node data
 	void *nodeData = NULL; CPXXgetcallbacknodeinfo(env, cbdata, wherefrom, 0, CPX_CALLBACK_INFO_NODE_USERHANDLE, &nodeData);
 
 	// no node data -- can happen only for root node
@@ -5497,7 +5495,7 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     
     std::vector<bool> w;
     w.resize(size);
-    std::transform(rawW.begin(), rawW.end(), w.begin(), [](double x) { return abs(x) > 1.E-5;});
+    std::transform(rawW.begin(), rawW.end(), w.begin(), [](double x) { return abs(x) > 0.5;});
     
     // variables for adding cut
     char sense = 'G';
@@ -5524,8 +5522,6 @@ static int CPXPUBLIC cutCB_solve_LS_cuttingPlane(CPXCENVptr env, void *cbdata, i
     std::vector<double> x;
     std::vector<std::vector<double>> q;
     // S->setVarUB(S->bestU, 0);
-    // double check for the XQ constraint only involve w and q
-    
     int solstat = S->solve_KAdaptability(K, false, x, q);
     S->addwBounds(w);
     
