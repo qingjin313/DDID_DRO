@@ -17,15 +17,20 @@
 #define CSTR_UNC 1
 #define USE_SINGLE 1
 #define USE_DRO 1
+#define USE_FEAS_W 1
+
+
 //-----------------------------------------------------------------------------------
 
 void KAdaptableInfo_KNP_DD::makeUncSet() {
 	U.clear();
+    U_small.clear();
     numAmbCstr = 0;
 
 	// define uncertain risk factors
 	for (unsigned int f = 1; f < data.phi[0].size(); ++f) {
 		U.addParam(0, -1, 1);
+        U_small.addParam(0, -1, 1);
 	}
     
     std::vector<std::vector<std::pair<int, double> >> constraints_pro;
@@ -49,6 +54,7 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
         profit_dev += high - data.profit[i];
         // add uncertain profit
         U.addParam(data.profit[i], low, high);
+        U_small.addParam(data.profit[i], low, high);
         // update contraint term for the profit i
         constraint.emplace_back(std::make_pair(data.phi[0].size()+i, -1.0));
         constraints_pro.emplace_back(constraint);
@@ -78,6 +84,7 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
             cost_dev += high - data.cost[i];
             // add uncertain cost
             U.addParam(data.cost[i], low, high);
+            U_small.addParam(data.cost[i], low, high);
             // update contraint term for the cost i
             constraint.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
             constraints_cost.emplace_back(constraint);
@@ -120,12 +127,14 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
     // add constraints for the profits
     for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
         U.addFacet(constraints_pro[i], 'E', -data.profit[i]);
+//        U_small.addFacet(constraints_pro[i], 'E', -data.profit[i]);
     }
     
     // add constraints for the costs
     if(CSTR_UNC){
         for (int i = 0; i <= data.N-1; ++i) if (data.cost[i] != 0.0) {
             U.addFacet(constraints_cost[i], 'E', -data.cost[i]);
+            U_small.addFacet(constraints_cost[i], 'E', -data.cost[i]);
         }
     }
     
@@ -179,7 +188,6 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
                     cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
                     cstr_pos.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, -1.0));
                     U.addFacet(cstr_pos, 'G', -data.cost[i]);
-
                     cstr_neg.clear();
                     cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + (2+CSTR_UNC)*data.N + 1 + CSTR_UNC + i, 1.0));
                     cstr_neg.emplace_back(std::make_pair(data.phi[0].size() + data.N + i, 1.0));
@@ -192,8 +200,8 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
     numFirstStage += numAmbCstr;
 }
 
-//-----------------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------------
 void KAdaptableInfo_KNP_DD::makeVars() {
 	X.clear();
 	Y.clear();
@@ -202,13 +210,13 @@ void KAdaptableInfo_KNP_DD::makeVars() {
 	// should always be defined and should always be declared first
 	X.addVarType("O", 'C', -CPX_INFBOUND, +CPX_INFBOUND, 1);
     
+    // x(i) : invest in project i before observing risk factors
+    X.addVarType("w", 'B', 0, 1, data.N);
+    C_W.assign(data.N, 0.0);
+    
     // dual variable for the ambiguity set
     if(USE_DRO)
         X.addVarType("psi", 'C', 0, 100, (1+CSTR_UNC)*(1+data.N*USE_SINGLE) );
-    
-	// x(i) : invest in project i before observing risk factors
-	X.addVarType("w", 'B', 0, 1, data.N);
-    C_W.assign(data.N, 0.0);
 
 	// y(i) : invest in project i after observing risk factors
 	Y.addVarType("y", 'B', 0, 1, data.N);
@@ -331,6 +339,16 @@ void KAdaptableInfo_KNP_DD::makeConsY(unsigned int l) {
             }
             C_XY[k].emplace_back(temp);
             //temp.print();
+            if(USE_FEAS_W){
+                temp.clear();
+                for (int i = 0; i <= data.N-1; ++i) if (data.cost[i] != 0.0) {
+                    temp.rowname("BUDGET_W(" + std::to_string(k) + ")");
+                    temp.sign('L');
+                    temp.RHS(data.B);
+                    temp.addTermX(getVarIndex_1("w", i), data.cost[i]);
+                }
+                C_X.emplace_back(temp);
+            }
         }
 	}	
 
@@ -401,6 +419,19 @@ void KAdaptableInfo_KNP_DD::makeConsY(unsigned int l) {
                 temp.addTermProduct(getVarIndex_2(k, "y", i), data.phi[0].size() + + data.N + i, 1.0);
             }
             C_XYQ[k].emplace_back(temp);
+            
+            if(k==0){
+                if(USE_FEAS_W){
+                    temp.clear();
+                    temp.rowname("BUDGET_W");
+                    temp.sign('L');
+                    temp.RHS(data.B);
+                    for (int i = 0; i <= data.N-1; ++i){
+                        temp.addTermProduct(getVarIndex_1("w", i), data.phi[0].size() + + data.N + i, 1.0);
+                    }
+                    C_XQ.emplace_back(temp);
+                }
+            }
         }
 	}
 }

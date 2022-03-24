@@ -183,7 +183,7 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1) {
             bool pos = false;
             while(!pos){
                 double sum = 0.0;
-                for (uint f = 1; f <= KNP_NFACTORS; f++){
+                for (int f = 1; f <= KNP_NFACTORS; f++){
                     data.ksi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
                     sum += abs(data.ksi[n][f]);
                 }
@@ -194,7 +194,7 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1) {
             pos = false;
             while(!pos){
                 double sum = 0.0;
-                for (uint f = 1; f <= KNP_NFACTORS; f++){
+                for (int f = 1; f <= KNP_NFACTORS; f++){
                     data.phi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
                     sum += abs(data.phi[n][f]);
                 }

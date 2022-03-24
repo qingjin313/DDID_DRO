@@ -523,6 +523,10 @@ public:
         return &pInfo->getUncSet();
     }
     
+    inline UNCSetCPtr getUncSetDual() const {
+        return &pInfo->getUncSetDual();
+    }
+    
     /**
      * Set observation decision to the problem
      */

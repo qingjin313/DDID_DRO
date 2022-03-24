@@ -60,6 +60,9 @@ protected:
 	/** Resident uncertainty set */
 	UncertaintySet U;
     
+    /** Uncertainty set for dual*/
+    UncertaintySet U_small;
+    
     //MARK: Qing: add this
     /** Resident larger uncertainty set  for sparation problem*/
     UncertaintySet Uk;
@@ -306,6 +309,10 @@ public:
 	inline const decltype(U)& getUncSet() {
 		return U;
 	}
+    
+    inline const decltype(U)& getUncSetDual() {
+        return U_small;
+    }
     
     //MARK: Qing: add get UncertaintySetK
     /**

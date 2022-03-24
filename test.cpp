@@ -15,6 +15,7 @@
 #include "problemInfo_spp.hpp"
 #include "problemInfo_psp.hpp"
 #include "problemInfo_test1.hpp"
+#include "problemInfo_np1.hpp"
 #include "problemInfo_knp_dd.hpp"
 #include "problemInfo_bb.hpp"
 #include "problemInfo_pe.hpp"
@@ -26,21 +27,26 @@ int main (int argc, char** argv) {
     assert(argc == 4);
     
     const bool heuristic_mode = true;
-	const unsigned int Kmax = 3;
+	const unsigned int Kmax = 2;
 	KAdaptableInfo *pInfo;
         
 	try {
         
-        BB data;
-        KAdaptableInfo_BB bbInfo;
-        int size = 12;
+        KNP data;
+        KAdaptableInfo_KNP_DD peInfo;
+        int size = 5;
 
-        gen_BB(data, size, 1); // set to 'true' to allow option of loans, origional seed is 1, old data seed is 0.
-        bbInfo.setInstance(data);
-        pInfo = bbInfo.clone();
+        gen_KNP(data, size, 1); // set to 'true' to allow option of loans, origional seed is 1, old data seed is 0.
+        peInfo.setInstance(data);
+        // peInfo.setInstance();
+        pInfo = peInfo.clone();
 
         KAdaptableSolver S(*pInfo);
-        
+//        std::vector<double> roSol{0.00,0.00,1.00,0.00,1.00,0.00,1.00,0.00,0.00,0.00,-0.00,-0.00,0.00,-0.00,0.00};
+//        // std::pair<double, double> bound(std::make_pair(0.0, 1.0));
+//        std::vector<std::pair<double, double>> bounds{std::make_pair(0.0, 0.5),std::make_pair(0.00, 0.04)};
+//        std::vector<int> numBP{20, 20};
+//        std::vector<double> results;
         for (auto X : pInfo->getConstraintsX())
             X.print();
         for (auto XQ : pInfo->getConstraintsXQ())
@@ -50,17 +56,25 @@ int main (int argc, char** argv) {
         for (auto YQ : pInfo->getConstraintsXYQ()[0])
             YQ.print();
         
-//        std::vector<bool> w = {0,0,0,0,0,0,1,0,0,1};
+//        std::vector<bool> w = {0,0,1,1,0,0,0,1,0,1};
 //        std::vector<double> x;
 //        std::vector<std::vector<double>> q;
 //        S.setW(w);
 //
 //        S.setBestU(+CPX_INFBOUND);
-//        S.solve_KAdaptability(1, false, x, q);
-        for (uint k = 1; k <= Kmax; k++){
+//        S.solve_KAdaptability(3, false, x, q);
+        for (unsigned int k = 1; k <= Kmax; k++){
             S.solve_L_Shaped2(k, true, std::cout);
+//            S.drawPsi(k, roSol, bounds, numBP, results);
             S.reset(*pInfo);
         }
+//        std::ofstream myfile;
+//        myfile.open("/Users/lynn/Desktop/research/DRO/np-hard/data3.csv");
+//        for(int i = 0; i<=20; i++){
+//            for(int j = 0; j <=20; j++)
+//                myfile<<results[21*i + j]<<",";
+//            myfile<<"\n";
+//        }
 //
 //        std::vector<bool> w = {0,0,0,0,1,0,1,0,0,1};
 //        std::vector<double> x;
