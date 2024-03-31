@@ -386,7 +386,7 @@ public:
 
 		return;
 	}
-    //MARK: Qing: get robust constraint with only rhs uncertainty
+
     inline void getRobustConstraint(UNCSetCPtr UncSet,
                                     CPXNNZ& nzcnt,
                                     double& trueRhs,
@@ -819,7 +819,6 @@ public:
     }
 };
 
-//MARK: Qing: add typedef of constant constraint expression pointer
 typedef const ConstraintExpression* CstrCPtr;
 
 

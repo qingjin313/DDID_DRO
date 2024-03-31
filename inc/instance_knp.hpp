@@ -10,7 +10,6 @@
 /*                                                                                     */
 /***************************************************************************************/
 
-
 #ifndef KNP_INSTANCE_HPP
 #define KNP_INSTANCE_HPP
 
@@ -185,7 +184,7 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1) {
                 double sum = 0.0;
                 for (int f = 1; f <= KNP_NFACTORS; f++){
                     data.ksi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
-                    sum += abs(data.ksi[n][f]);
+                    sum += std::abs(data.ksi[n][f]);
                 }
                 if (sum <= 2)
                     pos = true;
@@ -196,7 +195,7 @@ static inline void gen_KNP(KNP& data, unsigned int n, int seed = 1) {
                 double sum = 0.0;
                 for (int f = 1; f <= KNP_NFACTORS; f++){
                     data.phi[n][f] = mrounddec((rand()%100/(double)101)*2.0 - 1.0);
-                    sum += abs(data.phi[n][f]);
+                    sum += std::abs(data.phi[n][f]);
                 }
                 if (sum <= 2)
                     pos = true;

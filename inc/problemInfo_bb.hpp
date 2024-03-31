@@ -1,9 +1,14 @@
-//
-//  problemInfo_bb.hpp
-//  Kadaptability
-//
-//  Created by 靳晴 on 9/6/21.
-//
+/******************************************************************************************/
+/*                                                                                        */
+/*  Copyright 2024 by Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto */
+/*                                                                                        */
+/*  Licensed under the FreeBSD License (the "License").                                   */
+/*  You may not use this file except in compliance with the License.                      */
+/*  You may obtain a copy of the License at                                               */
+/*                                                                                        */
+/*  https://www.freebsd.org/copyright/freebsd-license.html                                */
+/*                                                                                        */
+/******************************************************************************************/
 
 #ifndef problemInfo_bb_hpp
 #define problemInfo_bb_hpp

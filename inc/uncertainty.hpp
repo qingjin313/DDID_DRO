@@ -1,25 +1,24 @@
 /***************************************************************************************/
-/*                                                                                     */
+/*                                                                                     */                                 
 /*  Copyright 2018 by Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann  */
+/*                                                                                     */  
+/*  Original Creator:                                                                  */
+/*  Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann                    */
 /*                                                                                     */
+/*  Contributors:                                                                      */
+/*  Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto                */
+/*                                                           						   */
+/*  Additional Contributions by                                                        */
+/*  Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto 2024:          */
+/*	Add functionality to support DDID                                                  */
+/*  																				   */
 /*  Licensed under the FreeBSD License (the "License").                                */
 /*  You may not use this file except in compliance with the License.                   */
 /*  You may obtain a copy of the License at                                            */
 /*                                                                                     */
 /*  https://www.freebsd.org/copyright/freebsd-license.html                             */
-/*                                                                                     */
+/*  																				   */	
 /***************************************************************************************/
-
-
-
-////////////////////////////////////////////
-// File: Uncertainty.hpp                  //
-////////////////////////////////////////////
-// Class that represents a generic        //
-// uncertainty set                        //
-////////////////////////////////////////////
-
-
 
 #ifndef UNCERTAINTY_HPP
 #define UNCERTAINTY_HPP
@@ -64,7 +63,6 @@ protected:
 	/* Corresponding sense of each constraint */
 	std::vector<char> polytope_sense;
     
-    //MARK: Qing add
     /** w vector*/
     std::vector<bool> w;
     
@@ -162,7 +160,6 @@ public:
 	 */
 	int addVariables_DualVars(CPXCENVptr env, CPXLPptr lp, const std::string& dualName = "") const;
     
-    //MARK: Qing add
     /**
      * Set vector w, need to be after the uncertain parameters are set
      * @param  wInput   input first stage observation decision

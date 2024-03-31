@@ -9,6 +9,7 @@
 /*  https://www.freebsd.org/copyright/freebsd-license.html                             */
 /*                                                                                     */
 /***************************************************************************************/
+
 #ifndef IND_TOOLS
 #define IND_TOOLS
 

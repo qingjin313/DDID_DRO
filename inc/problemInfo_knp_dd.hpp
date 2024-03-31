@@ -1,15 +1,14 @@
-/***************************************************************************************/
-/*                                                                                     */
-/*  Copyright 2018 by Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann  */
-/*                                                                                     */
-/*  Licensed under the FreeBSD License (the "License").                                */
-/*  You may not use this file except in compliance with the License.                   */
-/*  You may obtain a copy of the License at                                            */
-/*                                                                                     */
-/*  https://www.freebsd.org/copyright/freebsd-license.html                             */
-/*                                                                                     */
-/***************************************************************************************/
-
+/******************************************************************************************/
+/*                                                                                        */
+/*  Copyright 2024 by Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto */
+/*                                                                                        */
+/*  Licensed under the FreeBSD License (the "License").                                   */
+/*  You may not use this file except in compliance with the License.                      */
+/*  You may obtain a copy of the License at                                               */
+/*                                                                                        */
+/*  https://www.freebsd.org/copyright/freebsd-license.html                                */
+/*                                                                                        */
+/******************************************************************************************/
 
 #ifndef KADAPTABLEINFO_KNP_DD_HPP
 #define KADAPTABLEINFO_KNP_DD_HPP
@@ -51,6 +50,8 @@ public:
 	 * @param data problem instance
 	 */
 	void setInstance(const KNP& data);
+
+	void sampleUnc(int n, int seed, std::vector<std::vector<double>>& q) override;
 
 	/**
 	 * Virtual (default) constructor

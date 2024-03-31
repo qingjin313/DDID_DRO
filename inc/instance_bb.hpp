@@ -1,15 +1,14 @@
-/***************************************************************************************/
-/*                                                                                     */
-/*  Copyright 2018 by Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann  */
-/*                                                                                     */
-/*  Licensed under the FreeBSD License (the "License").                                */
-/*  You may not use this file except in compliance with the License.                   */
-/*  You may obtain a copy of the License at                                            */
-/*                                                                                     */
-/*  https://www.freebsd.org/copyright/freebsd-license.html                             */
-/*                                                                                     */
-/***************************************************************************************/
-
+/******************************************************************************************/
+/*                                                                                        */
+/*  Copyright 2024 by Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto */
+/*                                                                                        */
+/*  Licensed under the FreeBSD License (the "License").                                   */
+/*  You may not use this file except in compliance with the License.                      */
+/*  You may obtain a copy of the License at                                               */
+/*                                                                                        */
+/*  https://www.freebsd.org/copyright/freebsd-license.html                                */
+/*                                                                                        */
+/******************************************************************************************/
 
 #ifndef BB_INSTANCE_HPP
 #define BB_INSTANCE_HPP
@@ -23,8 +22,6 @@
 #include <random>
 #include <array>
 
-#define BB_NFACTORS 4
-
 /**
  * Class represesnting an instance of the Knapsack Problem
  * (as defined in the K-Adaptability paper)
@@ -32,23 +29,27 @@
  * Note: All arrays and matrices are 1-indexed
  */
 struct BB {
-	/** # of items */
-	int N;
+    /** # of items */
+    int N;
 
-	/** Cost of items */
-	std::vector<double> cost;
+    /** Cost of items */
+    std::vector<double> cost;
 
-	/** Budget (size of knapsack) */
-	double B;
+    /** Budget */
+    double B;
 
-	/** Profit of items */
-	std::vector<double> profit;
+    double dro_size;
 
-	/** Risk factor coefficients for costs */
-	std::vector<std::array<double, 1 + BB_NFACTORS> > phi;
+    int factor;
 
-	/** Risk factor coefficients for profits */
-	std::vector<std::array<double, 1 + BB_NFACTORS> > ksi;
+    /** Profit of items */
+    std::vector<double> profit;
+
+    /** Risk factor coefficients for costs */
+    std::vector<std::vector<double> > phi;
+
+    /** Risk factor coefficients for profits */
+    std::vector<std::vector<double> > ksi;
 
 	/** Solution file name */
 	std::string solfilename;
@@ -65,21 +66,23 @@ struct BB {
  * @param seed          seed that is unique to this instance
  * @param mixed_integer true if mixed-integer knapsack problem, otherwise pure integer
  */
-static inline void gen_BB(BB& data, unsigned int n, int seed = 1) {
+static inline void gen_BB(BB& data, unsigned int n, double budget, double dro_size, int seed = 1) {
 
 	if (n < 5) {
 		fprintf(stderr, "warning: N < 5 in Best Box Problem. Setting N = 5.\n");
 		n = 5;
 	}
+    int BB_NFACTORS = n/2;
 
 	// seed for re-producibility
 	std::default_random_engine gen (1111 + seed);
-	std::uniform_real_distribution<double> interval_1 (-1.0, 1.0);
+    std::uniform_real_distribution<double> interval_1 (-4.0/BB_NFACTORS, 4.0/BB_NFACTORS);
 	std::uniform_real_distribution<double> interval_10 (0.0, 10.0);
 
 	// # of items
 	data.N = n;
 	data.B = 0.0;
+    data.factor = BB_NFACTORS;
     
     // Cost of items
     data.cost.assign(data.N, 0.0);
@@ -89,8 +92,9 @@ static inline void gen_BB(BB& data, unsigned int n, int seed = 1) {
     }
 
     // Budget (size of knapsack)
-    data.B /= 2.0;
+    data.B *= budget;
 
+    data.dro_size = dro_size;
 
     // Profit of items
     data.profit.assign(data.N, 0.0);
@@ -102,7 +106,10 @@ static inline void gen_BB(BB& data, unsigned int n, int seed = 1) {
     // Risk factor coefficients
     data.phi.resize(data.N);
     data.ksi.resize(data.N);
-    
+    for (n = 0; (int)n <= data.N-1; n++) {
+        data.ksi[n].resize(BB_NFACTORS+1);
+        data.phi[n].resize(BB_NFACTORS+1);
+    }
     for (n = 0; (int)n <= data.N-1; n++) {
         bool reSample = true;
         while(reSample){

@@ -1,13 +1,23 @@
 /***************************************************************************************/
-/*                                                                                     */
+/*                                                                                     */                                     
 /*  Copyright 2018 by Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann  */
+/*                                                                                     */  
+/*  Original Creator:                                                                  */
+/*  Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann                    */
+/*                                                                                     */
+/*  Contributors:                                                                      */
+/*  Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto                */
+/*                                                                                     */
+/*  Additional Contributions by                                                        */
+/*  Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto 2024:          */
+/*  Add functionality to support DDID                                                  */
 /*                                                                                     */
 /*  Licensed under the FreeBSD License (the "License").                                */
 /*  You may not use this file except in compliance with the License.                   */
 /*  You may obtain a copy of the License at                                            */
 /*                                                                                     */
 /*  https://www.freebsd.org/copyright/freebsd-license.html                             */
-/*                                                                                     */
+/*                                                                                     */   
 /***************************************************************************************/
 
 
@@ -20,12 +30,7 @@
 void KAdaptableInfo::resize(unsigned int K) {
 	assert(isConsistentWithDesign());
 	unsigned int l = numPolicies;
-//	if (numPolicies < K){
-//		numPolicies = K;
-//	}
-//	for (unsigned int k = l; k < numPolicies; k++) {
-//		makeConsY(k);
-//	}
+
     if (numPolicies < K){
         numPolicies = K;
         for (unsigned int k = l; k < numPolicies; k++)
@@ -44,9 +49,6 @@ void KAdaptableInfo::resize(unsigned int K) {
     
 	assert(isConsistentWithDesign());
 }
-
-//MARK: Qing: add the function to enlarge the uncertainty set
-//-----------------------------------------------------------------------------------
 
 void KAdaptableInfo::makeUncSetK(unsigned int K)
 {
@@ -125,8 +127,6 @@ void KAdaptableInfo::makeUncSetK(unsigned int K)
         assert(Uk.getNoOfFacets() == int(numFacets + (numFacets + numW - 1) * l) );
     }
     
-    // int stat;
-    // CPXXwriteprob(Uk.getENVObject(), Uk.getLPObject(&stat), "/Users/lynn/Desktop/research/DRO/BnB/model_output/testK_before", "LP");
 }
 
 //-----------------------------------------------------------------------------------
@@ -215,15 +215,12 @@ bool KAdaptableInfo::isConsistentWithDesign() const {
 		}
 	}
     
-    //MARK: Qing: check w vector
     if( U.getWSize() && U.getWSize() != U.getNoOfUncertainParameters()) return 0;
 	return 1;
 }
 
 
 //-----------------------------------------------------------------------------------
-
-//MARK: Qing add
 const std::vector<int> KAdaptableInfo::mapK(const unsigned int k, const std::vector<int>& rmatind)
 {
     std::vector<int> rmatindNew;

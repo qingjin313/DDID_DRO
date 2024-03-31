@@ -1,15 +1,24 @@
 /***************************************************************************************/
-/*                                                                                     */
+/*                                                                                     */                                                  
 /*  Copyright 2018 by Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann  */
+/*                                                                                     */  
+/*  Original Creator:                                                                  */
+/*  Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann                    */
 /*                                                                                     */
+/*  Contributors:                                                                      */
+/*  Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto                */
+/*                                                           						   */
+/*  Additional Contributions by                                                        */
+/*  Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto 2024:          */
+/*	Add functionality to support DDID                                                  */
+/*  																				   */
 /*  Licensed under the FreeBSD License (the "License").                                */
 /*  You may not use this file except in compliance with the License.                   */
 /*  You may obtain a copy of the License at                                            */
 /*                                                                                     */
 /*  https://www.freebsd.org/copyright/freebsd-license.html                             */
-/*                                                                                     */
+/*  																				   */	
 /***************************************************************************************/
-
 
 #ifndef KADAPTABLEINFO_HPP
 #define KADAPTABLEINFO_HPP
@@ -63,7 +72,6 @@ protected:
     /** Uncertainty set for dual*/
     UncertaintySet U_small;
     
-    //MARK: Qing: add this
     /** Resident larger uncertainty set  for sparation problem*/
     UncertaintySet Uk;
 
@@ -136,7 +144,10 @@ public:
 	 */
 	void resize(unsigned int K);
     
-    //MARK: Qing: add the map uncertainty set function, called in resize(K)
+    /**
+     * Make a larger uncertainty set 
+     *
+     */
     void makeUncSetK(unsigned int K);
 
 	/**
@@ -145,7 +156,6 @@ public:
 	 */
 	bool isConsistentWithDesign() const;
     
-    //MARK: Qing: map index of y^1 to y^k
     /**
      * map indices from x, y^1 to x, y^k
      * @param  k    k-th policy(start from 0)
@@ -154,7 +164,6 @@ public:
      */
     const std::vector<int> mapK(const unsigned int k, const std::vector<int>& rmatind);
     
-    //MARK: Qing: map index of q^1 to q^k
     /**
      * map indices from q^1 to q^k
      * @param  k    k-th policy(start from 0)
@@ -163,7 +172,6 @@ public:
      */
     const std::vector<int> mapParamK(const unsigned int k, const std::vector<int>& rmatind);
     
-    //MARK: Qing: add set w and set xi_bar
     void setW(const std::vector<bool>& wInput);
     
     void setRobSolx(const std::vector<bool>& wInput, const std::vector<double>& xInput);
@@ -314,7 +322,6 @@ public:
         return U_small;
     }
     
-    //MARK: Qing: add get UncertaintySetK
     /**
      * Get larger uncertainty set K
      * @return return the uncertainty set
@@ -394,6 +401,8 @@ public:
     inline const decltype(C_W)& getCoefW() {
         return C_W;
     }
+
+    virtual inline void sampleUnc(int n, int seed, std::vector<std::vector<double>>& q) {std::cout<< "Not implemented\n";}
 };
 
 

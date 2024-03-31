@@ -1,14 +1,14 @@
-/***************************************************************************************/
-/*                                                                                     */
-/*  Copyright 2018 by Anirudh Subramanyam, Chrysanthos Gounaris and Wolfram Wiesemann  */
-/*                                                                                     */
-/*  Licensed under the FreeBSD License (the "License").                                */
-/*  You may not use this file except in compliance with the License.                   */
-/*  You may obtain a copy of the License at                                            */
-/*                                                                                     */
-/*  https://www.freebsd.org/copyright/freebsd-license.html                             */
-/*                                                                                     */
-/***************************************************************************************/
+/******************************************************************************************/
+/*                                                                                        */
+/*  Copyright 2024 by Qing Jin, Angelos Georghiou, Phebe Vayanos and Grani A. Hanasusanto */
+/*                                                                                        */
+/*  Licensed under the FreeBSD License (the "License").                                   */
+/*  You may not use this file except in compliance with the License.                      */
+/*  You may obtain a copy of the License at                                               */
+/*                                                                                        */
+/*  https://www.freebsd.org/copyright/freebsd-license.html                                */
+/*                                                                                        */
+/******************************************************************************************/
 
 
 #include "problemInfo_knp_dd.hpp"
@@ -18,8 +18,6 @@
 #define USE_SINGLE 1
 #define USE_DRO 1
 #define USE_FEAS_W 1
-
-
 //-----------------------------------------------------------------------------------
 
 void KAdaptableInfo_KNP_DD::makeUncSet() {
@@ -127,7 +125,6 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
     // add constraints for the profits
     for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
         U.addFacet(constraints_pro[i], 'E', -data.profit[i]);
-//        U_small.addFacet(constraints_pro[i], 'E', -data.profit[i]);
     }
     
     // add constraints for the costs
@@ -200,8 +197,8 @@ void KAdaptableInfo_KNP_DD::makeUncSet() {
     numFirstStage += numAmbCstr;
 }
 
-
 //-----------------------------------------------------------------------------------
+
 void KAdaptableInfo_KNP_DD::makeVars() {
 	X.clear();
 	Y.clear();
@@ -210,14 +207,14 @@ void KAdaptableInfo_KNP_DD::makeVars() {
 	// should always be defined and should always be declared first
 	X.addVarType("O", 'C', -CPX_INFBOUND, +CPX_INFBOUND, 1);
     
-    // x(i) : invest in project i before observing risk factors
-    X.addVarType("w", 'B', 0, 1, data.N);
+	// x(i) : invest in project i before observing risk factors
+	X.addVarType("w", 'B', 0, 1, data.N);
     C_W.assign(data.N, 0.0);
-    
+
     // dual variable for the ambiguity set
     if(USE_DRO)
         X.addVarType("psi", 'C', 0, 100, (1+CSTR_UNC)*(1+data.N*USE_SINGLE) );
-
+    
 	// y(i) : invest in project i after observing risk factors
 	Y.addVarType("y", 'B', 0, 1, data.N);
 
@@ -457,3 +454,58 @@ void KAdaptableInfo_KNP_DD::setInstance(const KNP& d) {
 }
 
 //-----------------------------------------------------------------------------------
+
+void KAdaptableInfo_KNP_DD::sampleUnc(int n, int seed, std::vector<std::vector<double>>& q) {
+    q.resize(n);
+    for(int k=0; k<n; k++){
+        q[k].emplace_back(0);
+        std::default_random_engine gen (1111 + seed + k);
+        std::uniform_real_distribution<double> interval_1 (-1.0, 1.0);
+        std::uniform_int_distribution<int> interval_2(0, 1);
+        
+        // uncertain risk factors
+        for (unsigned int f = 1; f < data.phi[0].size(); ++f) {
+            if(k==0)
+                q[k].emplace_back(0);
+            else if (k==1)
+                q[k].emplace_back(1);
+            else if (k==2)
+                q[k].emplace_back(-1);
+            else
+                q[k].emplace_back((interval_2(gen) == 0) ? -1 : 1);
+        }
+        
+        // for profit
+        double total_dev_p(0.0);
+        for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0) {
+            double p(data.profit[i]);
+            for (int f = 1; f < int(data.ksi[i].size()); f++)
+                p += data.ksi[i][f] * data.profit[i] * 0.5 * q[k][f];
+            q[k].emplace_back(p);
+            
+            total_dev_p += p - data.profit[i];
+        }
+        
+        // for cost
+        double total_dev_c(0.0);
+        for (int i = 0; i <= data.N-1; ++i) if (data.cost[i] != 0.0) {
+            double c(data.cost[i]);
+            for (int f = 1; f < int(data.phi[i].size()); f++)
+                c += data.phi[i][f] * data.cost[i] * 0.5 * q[k][f];
+            q[k].emplace_back(c);
+            
+            total_dev_c += c - data.cost[i];
+        }
+        
+        // for deviation of total profit and cost
+        q[k].emplace_back(abs(total_dev_p));
+        q[k].emplace_back(abs(total_dev_c));
+        
+        // for single deviation of profit and cost
+        for (int i = 0; i <= data.N-1; ++i) if (data.profit[i] != 0.0)
+            q[k].emplace_back(abs(q[k][data.phi[i].size() + i] - data.profit[i]));
+        
+        for (int i = 0; i <= data.N-1; ++i) if (data.cost[i] != 0.0)
+            q[k].emplace_back(abs(q[k][data.N + data.phi[i].size() + i] - data.cost[i]));
+    }
+}
